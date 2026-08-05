@@ -58,9 +58,10 @@ def _load_engine(config: dict):
 
     engine_type = config["engine_type"]
     device = config.get("device", "cpu")
-    hub = "hf"  # 本 fork 下載一律 HuggingFace
+    hub = "hf"  # this fork downloads exclusively from HuggingFace
     language = config.get("language", "auto")
-    # ASR 引擎（whisper/SenseVoice）只認裸 "zh" — 介面語言代碼在此正規化
+    # ASR engines (whisper/SenseVoice) only accept bare "zh" — normalize the
+    # UI-level language codes here at the single worker entry point.
     if language in ("zh-TW", "zh-CN", "zh-HK"):
         language = "zh"
     pad_seconds = config.get("pad_seconds")

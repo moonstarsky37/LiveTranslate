@@ -1,4 +1,4 @@
-"""i18n 語系檔一致性 + 語言偵測/映射（規格 §5.2）。"""
+"""Locale file consistency + language detection/mapping (spec section 5.2)."""
 
 import sys
 from pathlib import Path

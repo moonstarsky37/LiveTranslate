@@ -10,7 +10,8 @@ log = logging.getLogger("LiveTranslate.TL")
 LANGUAGE_DISPLAY = {
     "en": "English",
     "ja": "Japanese",
-    # 明確全名 + 繁簡分流：小模型對裸 "Chinese" 常輸出簡體（zh-TW 教訓）
+    # Explicit full names with a Traditional/Simplified split: small models
+    # frequently emit Simplified characters when told just "Chinese".
     "zh": "Traditional Chinese (Taiwan)",
     "zh-TW": "Traditional Chinese (Taiwan)",
     "zh-CN": "Simplified Chinese",

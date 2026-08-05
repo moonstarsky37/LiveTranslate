@@ -125,7 +125,8 @@ ASR_MODEL_IDS_HF = {
 def asr_model_id(
     engine_type: str, hub: str = "hf", funasr_model: str | None = None
 ) -> str:
-    """Repo id for an engine。下載一律 HF；"ms" 僅供舊快取目錄掃描取 id。"""
+    """Repo id for an engine. Downloads are HF-only; "ms" is accepted solely
+    to resolve ids when scanning legacy ModelScope cache directories."""
     if engine_type == "funasr":
         return funasr_model_id(funasr_model, hub)
     if engine_type in FUNASR_LEGACY_ENGINE_ALIASES:
@@ -219,7 +220,8 @@ def funasr_supports_padding(model_key: str | None) -> bool:
 
 
 def funasr_model_id(model_key: str | None, hub: str = "hf") -> str:
-    # 下載一律 HF（download_asr 強制）；"ms" 僅供舊 ModelScope 快取目錄掃描取 id
+    # Downloads are HF-only (enforced in download_asr); "ms" is accepted solely
+    # for resolving ids when scanning legacy ModelScope cache directories.
     profile = funasr_profile(model_key)
     return profile["huggingface_id"] if hub != "ms" else profile["modelscope_id"]
 
@@ -622,8 +624,9 @@ def ensure_qwen_weights(model_dir, hub: str = "hf") -> None:
 
 
 def download_asr(engine, model_size="medium", hub="hf", proxy="system"):
-    # 本 fork 下載一律 HuggingFace（hub 參數僅為呼叫端相容而保留）；
-    # 舊 ModelScope 快取仍由 get_local_model_path()/is_asr_cached() 掃描沿用
+    # This fork downloads exclusively from HuggingFace (the hub parameter is
+    # kept only for caller compatibility). Legacy ModelScope caches remain
+    # usable via get_local_model_path()/is_asr_cached() scanning.
     resolved = str(MODELS_DIR.resolve())
     hf_cache = os.path.join(resolved, "huggingface", "hub")
     with _proxy_env(proxy):

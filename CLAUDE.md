@@ -8,6 +8,25 @@ LiveTranslate is a real-time audio translation system for video players on Windo
 
 **Current phase**: Phase 0 Python prototype (Phase 1 will be a C++ DirectShow Audio Tap Filter).
 
+## Fork conventions (moonstarsky37/LiveTranslate)
+
+This is a fork of TheDeathDragon/LiveTranslate (MIT). Fork invariants:
+
+- **Model downloads are HuggingFace-only.** Legacy ModelScope caches under
+  `models/modelscope/` stay readable (scan logic in `model_manager.py`), but no
+  new download may use ModelScope. The `modelscope` pip package may still appear
+  as a transitive dependency of funasr — our code must never import it.
+- **Setup wizard**: no auto-start countdown; downloads begin only on explicit
+  user click; settings are persisted at click time, so interrupted downloads
+  resume via the missing-model dialog, never the wizard loop.
+- **zh-TW is first-class**: locales are en / zh-TW / zh-CN with identical key
+  sets (enforced by `tests/unit/test_i18n.py`); bare `"zh"` in settings migrates
+  silently to `zh-TW` and is written back; README.md is Traditional Chinese.
+- **ASR language codes**: engines only accept bare `"zh"` — `zh-TW`/`zh-CN`/`zh-HK`
+  are normalized at the `asr_worker.py` entry point.
+- **Upstream sync**: cherry-pick only (remote `upstream`), noting the upstream
+  hash in the commit message. Release tags: `vYYYY.MM.DD-tw.N`.
+
 ## Running
 
 ```bash
@@ -125,7 +144,7 @@ Key overlay features:
 ### Startup Flow
 
 1. `main.py` reads `user_settings.json` and calls `apply_cache_env()` before `import torch`
-2. First launch (no `user_settings.json`) → `SetupWizardDialog`: choose hub + path + download Silero+SenseVoice
+2. First launch (no `user_settings.json`) → `SetupWizardDialog`: pick proxy mode, click Start Download (Silero+SenseVoice from HuggingFace; settings persisted at click time)
 3. Non-first launch but models missing → `ModelDownloadDialog`: auto-download missing models
 4. All models ready → create main UI (overlay, panel, pipeline)
 5. Runtime ASR engine switch: if uncached → `ModelDownloadDialog`; then `_ModelLoadDialog` while the app shuts down the current worker and loads the target worker. If target loading fails, the app tries to restore the previous worker.
@@ -183,5 +202,8 @@ Continuous speech is processed incrementally to reduce latency (enabled by `incr
 ## Language & Style
 
 - Respond in Chinese
-- Code comments in English only where critical
+- **Commit messages: English only**
+- **Code comments and docstrings: English only.** Exceptions: README/docs files
+  (zh-TW is the primary document language) and user-facing UI strings (i18n yaml
+  values, message-box text), which follow their locale
 - Commit messages without Co-Authored-By

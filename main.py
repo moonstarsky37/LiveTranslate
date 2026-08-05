@@ -502,7 +502,7 @@ class LiveTranslateApp:
             engine_type, settings.get("funasr_model", self._funasr_model_key)
         )
         device = settings.get("asr_device", self._asr_device)
-        # 本 fork 下載一律 HuggingFace；舊設定的 "ms" 一律視為 "hf"
+        # This fork downloads exclusively from HuggingFace; legacy "ms" is treated as "hf"
         hub = "hf"
         download_proxy = "system"
         if self._panel:
@@ -1742,7 +1742,8 @@ def main():
     config["asr"].setdefault("funasr_model", DEFAULT_FUNASR_MODEL)
     saved = _load_saved_settings()
     migrate_funasr_settings(saved)
-    # 本 fork 遷移（靜默、回寫）：hub 一律 hf；裸 "zh" 語言值映射 zh-TW
+    # Fork migrations (silent, written back): hub is always hf; bare "zh"
+    # language values map to zh-TW.
     if saved:
         _fork_migrated = False
         if saved.get("hub") == "ms":

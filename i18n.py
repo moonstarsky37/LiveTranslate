@@ -8,7 +8,7 @@ _dir = Path(__file__).parent / "i18n"
 
 
 def _detect_system_lang() -> str:
-    """zh_TW / zh_HK / zh_MO → zh-TW；其餘 zh* → zh-CN；否則 en。"""
+    """zh_TW / zh_HK / zh_MO -> zh-TW; other zh* -> zh-CN; otherwise en."""
     try:
         lang_code = (locale.getdefaultlocale()[0] or "").replace("-", "_")
         if lang_code.startswith("zh"):
@@ -23,12 +23,12 @@ def _detect_system_lang() -> str:
 
 def set_lang(lang: str):
     global _lang, _strings
-    # 舊設定相容：裸 "zh" 一律映射 zh-TW（本 fork 以台灣使用者為預設）
+    # Legacy compatibility: bare "zh" maps to zh-TW (this fork targets Taiwan users)
     if lang == "zh":
         lang = "zh-TW"
     _lang = lang
     f = _dir / f"{lang}.yaml"
-    # 找不到語系檔時的回落順序：zh-TW → en
+    # Fallback order when the locale file is missing: zh-TW -> en
     if not f.exists():
         f = _dir / "zh-TW.yaml"
     if not f.exists():

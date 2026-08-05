@@ -30,7 +30,7 @@ transformers>=4.40.0
 # VAD (bundles the Silero v5 model in the wheel — no GitHub/torch.hub download)
 silero-vad>=5.0
 
-# Model hub（本 fork 下載一律 HuggingFace）
+# Model hub (this fork downloads exclusively from HuggingFace)
 huggingface_hub>=0.20.0
 
 # UI

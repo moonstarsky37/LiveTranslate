@@ -350,7 +350,8 @@ class ControlPanel(QWidget):
         asr_layout.addWidget(self._mic_device, 7, 1)
         self._mic_device.currentIndexChanged.connect(self._auto_save)
 
-        # 本 fork 下載一律 HuggingFace — 來源下拉已移除（D2）
+        # This fork downloads exclusively from HuggingFace — the source
+        # selector was removed (spec D2).
 
         self._ui_lang_combo = QComboBox()
         self._ui_lang_combo.addItems(["English", "繁體中文", "简体中文"])

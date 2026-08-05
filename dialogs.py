@@ -127,7 +127,8 @@ class _ModelLoadDialog(QDialog):
 
 
 class SetupWizardDialog(QDialog):
-    """首啟精靈：下載必要模型（一律 HuggingFace；只有使用者按下按鈕才開始）。"""
+    """First-launch wizard: download required models (HuggingFace only;
+    download starts only when the user explicitly clicks the button)."""
 
     _log_signal = pyqtSignal(str)
 
@@ -203,8 +204,9 @@ class SetupWizardDialog(QDialog):
 
         self._proxy = self._download_proxy()
 
-        # 設定在「按下下載」當下即落盤（D4）：下載中斷或關閉程式後，下次啟動
-        # 走缺模型續下載流程（ModelDownloadDialog），不再重回精靈迴圈
+        # Persist settings the moment the user clicks Download (spec D4):
+        # if the download is interrupted or the app is closed, the next launch
+        # goes through the missing-model dialog instead of looping back here.
         from control_panel import _save_settings
 
         settings = {
