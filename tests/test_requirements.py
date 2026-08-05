@@ -44,7 +44,7 @@ def test_update_stops_when_dependency_installation_fails():
 
 
 def test_readmes_do_not_describe_the_removed_editdistance_workaround():
-    for path in (Path("README.md"), Path("README_zh.md")):
+    for path in (Path("README.md"), Path("README_en.md"), Path("README_zh-CN.md")):
         text = path.read_text(encoding="utf-8").lower()
         assert "--no-deps" not in text
         assert "editdistance-s" not in text

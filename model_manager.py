@@ -123,14 +123,14 @@ ASR_MODEL_IDS_HF = {
 
 
 def asr_model_id(
-    engine_type: str, hub: str = "ms", funasr_model: str | None = None
+    engine_type: str, hub: str = "hf", funasr_model: str | None = None
 ) -> str:
-    """Return the repo id for an engine on the given hub ('ms' or 'hf')."""
+    """Repo id for an engine。下載一律 HF；"ms" 僅供舊快取目錄掃描取 id。"""
     if engine_type == "funasr":
         return funasr_model_id(funasr_model, hub)
     if engine_type in FUNASR_LEGACY_ENGINE_ALIASES:
         return funasr_model_id(FUNASR_LEGACY_ENGINE_ALIASES[engine_type], hub)
-    if hub == "hf" and engine_type in ASR_MODEL_IDS_HF:
+    if hub != "ms" and engine_type in ASR_MODEL_IDS_HF:
         return ASR_MODEL_IDS_HF[engine_type]
     return ASR_MODEL_IDS[engine_type]
 
@@ -218,9 +218,10 @@ def funasr_supports_padding(model_key: str | None) -> bool:
     return bool(funasr_profile(model_key).get("supports_padding"))
 
 
-def funasr_model_id(model_key: str | None, hub: str = "ms") -> str:
+def funasr_model_id(model_key: str | None, hub: str = "hf") -> str:
+    # 下載一律 HF（download_asr 強制）；"ms" 僅供舊 ModelScope 快取目錄掃描取 id
     profile = funasr_profile(model_key)
-    return profile["huggingface_id"] if hub == "hf" else profile["modelscope_id"]
+    return profile["huggingface_id"] if hub != "ms" else profile["modelscope_id"]
 
 
 def _custom_whisper_path(value) -> Path | None:
@@ -320,7 +321,6 @@ def local_faster_whisper_display_name(path) -> str | None:
 def apply_cache_env():
     """Point all model caches to ./models/."""
     resolved = str(MODELS_DIR.resolve())
-    os.environ["MODELSCOPE_CACHE"] = os.path.join(resolved, "modelscope")
     os.environ["HF_HOME"] = os.path.join(resolved, "huggingface")
     os.environ["TORCH_HOME"] = os.path.join(resolved, "torch")
     log.info(f"Cache env set: {resolved}")
@@ -397,7 +397,7 @@ def _hf_repo_complete(org: str, name: str, min_bytes: int = 50_000_000) -> bool:
     return False
 
 
-def is_asr_cached(engine_type, model_size="medium", hub="ms") -> bool:
+def is_asr_cached(engine_type, model_size="medium", hub="hf") -> bool:
     if engine_type == "funasr" or engine_type in FUNASR_LEGACY_ENGINE_ALIASES:
         model_key = (
             FUNASR_LEGACY_ENGINE_ALIASES[engine_type]
@@ -494,7 +494,7 @@ def get_missing_models(engine, model_size, hub) -> list:
     return missing
 
 
-def get_local_model_path(engine_type, hub="ms", funasr_model: str | None = None):
+def get_local_model_path(engine_type, hub="hf", funasr_model: str | None = None):
     """Return local snapshot path if model is cached, else None.
 
     Checks the preferred hub first, then falls back to the other hub.
@@ -599,7 +599,7 @@ def qwen_weights_present(model_dir) -> bool:
     return any(f.suffix in (".safetensors", ".bin") for f in qwen_dir.iterdir())
 
 
-def ensure_qwen_weights(model_dir, hub: str = "ms") -> None:
+def ensure_qwen_weights(model_dir, hub: str = "hf") -> None:
     """Fetch Qwen3-0.6B weights into a nano model's embedded subdir (one-time).
 
     Kept off the ASR worker startup path: its 180s ready timeout would otherwise
@@ -611,10 +611,7 @@ def ensure_qwen_weights(model_dir, hub: str = "ms") -> None:
     if any(f.suffix in (".safetensors", ".bin") for f in qwen_dir.iterdir()):
         return
     log.info("Downloading Qwen3-0.6B weights (one-time)...")
-    if hub == "hf":
-        from huggingface_hub import snapshot_download
-    else:
-        from modelscope import snapshot_download
+    from huggingface_hub import snapshot_download
 
     snapshot_download(
         "Qwen/Qwen3-0.6B",
@@ -624,9 +621,10 @@ def ensure_qwen_weights(model_dir, hub: str = "ms") -> None:
     log.info("Qwen3-0.6B weights downloaded")
 
 
-def download_asr(engine, model_size="medium", hub="ms", proxy="system"):
+def download_asr(engine, model_size="medium", hub="hf", proxy="system"):
+    # 本 fork 下載一律 HuggingFace（hub 參數僅為呼叫端相容而保留）；
+    # 舊 ModelScope 快取仍由 get_local_model_path()/is_asr_cached() 掃描沿用
     resolved = str(MODELS_DIR.resolve())
-    ms_cache = os.path.join(resolved, "modelscope")
     hf_cache = os.path.join(resolved, "huggingface", "hub")
     with _proxy_env(proxy):
         if engine == "funasr" or engine in FUNASR_LEGACY_ENGINE_ALIASES:
@@ -635,22 +633,15 @@ def download_asr(engine, model_size="medium", hub="ms", proxy="system"):
                 if engine in FUNASR_LEGACY_ENGINE_ALIASES
                 else normalize_funasr_model_key(model_size)
             )
-            if hub == "ms":
-                from modelscope import snapshot_download
+            from huggingface_hub import snapshot_download
 
-                model_id = funasr_model_id(model_key, "ms")
-                log.info(f"Downloading {model_id} from ModelScope...")
-                snapshot_download(model_id=model_id, cache_dir=ms_cache)
-            else:
-                from huggingface_hub import snapshot_download
-
-                model_id = funasr_model_id(model_key, "hf")
-                log.info(f"Downloading {model_id} from HuggingFace...")
-                snapshot_download(repo_id=model_id, cache_dir=hf_cache)
-            funasr_dir = get_local_model_path("funasr", hub=hub, funasr_model=model_key)
+            model_id = funasr_model_id(model_key)
+            log.info(f"Downloading {model_id} from HuggingFace...")
+            snapshot_download(repo_id=model_id, cache_dir=hf_cache)
+            funasr_dir = get_local_model_path("funasr", hub="hf", funasr_model=model_key)
             neutralize_funasr_requirements(funasr_dir)
             if funasr_dir and funasr_profile(model_key)["family"] == "funasr-nano":
-                ensure_qwen_weights(funasr_dir, hub=hub)
+                ensure_qwen_weights(funasr_dir)
         elif engine == "anime-whisper":
             # HF-only, ignore hub setting
             from huggingface_hub import snapshot_download

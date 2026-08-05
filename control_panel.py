@@ -131,7 +131,7 @@ class ControlPanel(QWidget):
                     }
                 ],
                 "active_model": 0,
-                "hub": "ms",
+                "hub": "hf",
             }
 
         if "models" not in self._current_settings:
@@ -350,20 +350,17 @@ class ControlPanel(QWidget):
         asr_layout.addWidget(self._mic_device, 7, 1)
         self._mic_device.currentIndexChanged.connect(self._auto_save)
 
-        self._hub_combo = QComboBox()
-        self._hub_combo.addItems([t("hub_modelscope"), t("hub_huggingface")])
-        saved_hub = s.get("hub", "ms")
-        self._hub_combo.setCurrentIndex(0 if saved_hub == "ms" else 1)
-        asr_layout.addWidget(QLabel(t("label_hub")), 8, 0)
-        asr_layout.addWidget(self._hub_combo, 8, 1)
-        self._hub_combo.currentIndexChanged.connect(self._auto_save)
+        # 本 fork 下載一律 HuggingFace — 來源下拉已移除（D2）
 
         self._ui_lang_combo = QComboBox()
-        self._ui_lang_combo.addItems(["English", "中文"])
+        self._ui_lang_combo.addItems(["English", "繁體中文", "简体中文"])
         from i18n import get_lang
 
         saved_lang = s.get("ui_lang", get_lang())
-        self._ui_lang_combo.setCurrentIndex(0 if saved_lang == "en" else 1)
+        if saved_lang == "zh":
+            saved_lang = "zh-TW"
+        _ui_lang_index = {"en": 0, "zh-TW": 1, "zh-CN": 2}
+        self._ui_lang_combo.setCurrentIndex(_ui_lang_index.get(saved_lang, 1))
         asr_layout.addWidget(QLabel(t("label_ui_lang")), 9, 0)
         asr_layout.addWidget(self._ui_lang_combo, 9, 1)
         self._ui_lang_combo.currentIndexChanged.connect(self._on_ui_lang_changed)
@@ -1175,7 +1172,7 @@ class ControlPanel(QWidget):
         from model_manager import is_asr_cached, _MODEL_SIZE_BYTES
 
         size = self._selected_whisper_model()
-        cached = is_asr_cached("whisper", size, self._current_settings.get("hub", "ms"))
+        cached = is_asr_cached("whisper", size, "hf")
         if size not in _WHISPER_SIZES:
             if cached:
                 self._whisper_status.setText(t("whisper_local_ready"))
@@ -1204,7 +1201,7 @@ class ControlPanel(QWidget):
         from model_manager import is_asr_cached
 
         size = self._selected_whisper_model()
-        if is_asr_cached("whisper", size, self._current_settings.get("hub", "ms")):
+        if is_asr_cached("whisper", size, "hf"):
             self._auto_save()
 
     def _download_whisper(self):
@@ -1213,7 +1210,7 @@ class ControlPanel(QWidget):
         size = self._selected_whisper_model()
         if size not in _WHISPER_SIZES:
             return
-        hub = self._current_settings.get("hub", "ms")
+        hub = "hf"
         if is_asr_cached("whisper", size, hub):
             return
         missing = get_missing_models("whisper", size, hub)
@@ -1381,7 +1378,7 @@ class ControlPanel(QWidget):
         self._current_settings["interim_interval"] = round(self._interim_interval_spin.value(), 2)
 
     def _on_ui_lang_changed(self, index):
-        lang = "en" if index == 0 else "zh"
+        lang = ("en", "zh-TW", "zh-CN")[index] if 0 <= index <= 2 else "zh-TW"
         self._current_settings["ui_lang"] = lang
         _save_settings(self._current_settings)
         from i18n import set_lang
@@ -1393,6 +1390,7 @@ class ControlPanel(QWidget):
             self,
             "LiveTranslate",
             "Language changed. Please restart the application.\n"
+            "語言已變更，請重新啟動應用程式。\n"
             "语言已更改，请重启应用程序。",
         )
 
@@ -1467,9 +1465,7 @@ class ControlPanel(QWidget):
             self._current_settings["mic_device"] = "__default__"
         else:
             self._current_settings["mic_device"] = self._mic_device.currentText()
-        self._current_settings["hub"] = (
-            "ms" if self._hub_combo.currentIndex() == 0 else "hf"
-        )
+        self._current_settings["hub"] = "hf"
         self._current_settings["sensevoice_pad_seconds"] = round(
             self._sensevoice_pad_seconds.value(), 2
         )

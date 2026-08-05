@@ -10,7 +10,10 @@ log = logging.getLogger("LiveTranslate.TL")
 LANGUAGE_DISPLAY = {
     "en": "English",
     "ja": "Japanese",
-    "zh": "Chinese",
+    # 明確全名 + 繁簡分流：小模型對裸 "Chinese" 常輸出簡體（zh-TW 教訓）
+    "zh": "Traditional Chinese (Taiwan)",
+    "zh-TW": "Traditional Chinese (Taiwan)",
+    "zh-CN": "Simplified Chinese",
     "ko": "Korean",
     "fr": "French",
     "de": "German",
@@ -137,7 +140,7 @@ class Translator:
         api_base,
         api_key,
         model,
-        target_language="zh",
+        target_language="zh-TW",
         max_tokens=256,
         temperature=0.3,
         streaming=True,

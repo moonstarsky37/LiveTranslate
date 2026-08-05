@@ -502,10 +502,10 @@ class LiveTranslateApp:
             engine_type, settings.get("funasr_model", self._funasr_model_key)
         )
         device = settings.get("asr_device", self._asr_device)
-        hub = "ms"
+        # 本 fork 下載一律 HuggingFace；舊設定的 "ms" 一律視為 "hf"
+        hub = "hf"
         download_proxy = "system"
         if self._panel:
-            hub = settings.get("hub", "ms")
             download_proxy = settings.get("download_proxy", "system")
 
         model_size = self._config["asr"]["model_size"]
@@ -1742,6 +1742,19 @@ def main():
     config["asr"].setdefault("funasr_model", DEFAULT_FUNASR_MODEL)
     saved = _load_saved_settings()
     migrate_funasr_settings(saved)
+    # 本 fork 遷移（靜默、回寫）：hub 一律 hf；裸 "zh" 語言值映射 zh-TW
+    if saved:
+        _fork_migrated = False
+        if saved.get("hub") == "ms":
+            saved["hub"] = "hf"
+            _fork_migrated = True
+        for _lang_key in ("target_language", "ui_lang"):
+            if saved.get(_lang_key) == "zh":
+                saved[_lang_key] = "zh-TW"
+                _fork_migrated = True
+        if _fork_migrated:
+            _save_settings(saved)
+            log.info("Fork settings migration applied (hub→hf / zh→zh-TW)")
 
     # Log actual effective config
     _asr_eng = (saved or {}).get("asr_engine", config["asr"].get("asr_engine", "funasr"))
@@ -1824,13 +1837,13 @@ def main():
                 if current_engine == "funasr"
                 else saved.get("whisper_model_size", config["asr"]["model_size"])
             ),
-            saved.get("hub", "ms"),
+            "hf",
         )
         if missing:
             log.info(f"Missing models: {[m['name'] for m in missing]}")
             dlg = ModelDownloadDialog(
                 missing,
-                hub=saved.get("hub", "ms"),
+                hub="hf",
                 proxy=saved.get("download_proxy", "system"),
             )
             if dlg.exec() != QDialog.DialogCode.Accepted:

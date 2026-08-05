@@ -16,7 +16,7 @@ _NANO_DIR = os.path.join(os.path.dirname(__file__), "funasr_nano")
 class FunASRNanoEngine:
     """Speech-to-text using Fun-ASR-Nano-2512 or Fun-ASR-MLT-Nano-2512."""
 
-    def __init__(self, device="cuda", hub="ms", engine_type="funasr-nano"):
+    def __init__(self, device="cuda", hub="hf", engine_type="funasr-nano"):
         if _NANO_DIR not in sys.path:
             sys.path.insert(0, _NANO_DIR)
 

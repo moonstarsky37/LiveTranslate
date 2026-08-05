@@ -14,7 +14,7 @@ class FunASREngine:
         self,
         model_key: str = "sensevoice-small",
         device: str = "cuda",
-        hub: str = "ms",
+        hub: str = "hf",
         pad_seconds: float | None = None,
     ):
         self.model_key = normalize_funasr_model_key(model_key)
