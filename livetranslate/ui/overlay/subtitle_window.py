@@ -44,7 +44,9 @@ def _resolve_image_path(path: str) -> str:
     p = Path(path)
     if p.is_absolute():
         return str(p) if p.exists() else ""
-    resolved = Path(__file__).parent / p
+    from livetranslate.paths import ROOT
+
+    resolved = ROOT / p
     return str(resolved) if resolved.exists() else ""
 
 # Default subtitle window settings

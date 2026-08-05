@@ -5,7 +5,7 @@ import time
 import uuid
 from multiprocessing.connection import Connection
 
-from asr_worker import worker_main
+from livetranslate.asr.worker import worker_main
 
 log = logging.getLogger("LiveTranslate.ASRClient")
 

@@ -3,7 +3,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from translator import make_openai_client
+from livetranslate.translation.translator import make_openai_client
 
 BENCH_SENTENCES = {
     "ja": [

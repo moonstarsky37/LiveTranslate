@@ -52,7 +52,7 @@ def _parse_device(device: str) -> tuple[str, int]:
 
 
 def _load_engine(config: dict):
-    from model_manager import MODELS_DIR, apply_cache_env
+    from livetranslate.model_manager import MODELS_DIR, apply_cache_env
 
     apply_cache_env()
 
@@ -69,7 +69,7 @@ def _load_engine(config: dict):
     parsed_device, device_index = _parse_device(device)
 
     if engine_type == "funasr":
-        from asr_funasr import FunASREngine
+        from livetranslate.asr.funasr import FunASREngine
 
         engine = FunASREngine(
             model_key=config.get("funasr_model"),
@@ -78,12 +78,12 @@ def _load_engine(config: dict):
             pad_seconds=pad_seconds,
         )
     elif engine_type == "anime-whisper":
-        from asr_anime_whisper import AnimeWhisperEngine
+        from livetranslate.asr.anime_whisper import AnimeWhisperEngine
 
         worker_device = parsed_device if parsed_device == "cpu" else f"cuda:{device_index}"
         engine = AnimeWhisperEngine(device=worker_device, hub=hub)
     else:
-        from asr_engine import ASREngine
+        from livetranslate.asr.whisper import ASREngine
 
         compute_type = config.get("compute_type", "float16")
         if parsed_device == "cpu" and compute_type == "float16":

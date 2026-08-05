@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 
-from model_manager import funasr_profile, normalize_funasr_model_key
+from livetranslate.model_manager import funasr_profile, normalize_funasr_model_key
 
 log = logging.getLogger("LiveTranslate.FunASR")
 
@@ -22,11 +22,11 @@ class FunASREngine:
         self.family = self.profile["family"]
 
         if self.family == "sensevoice":
-            from asr_sensevoice import SenseVoiceEngine
+            from livetranslate.asr.sensevoice import SenseVoiceEngine
 
             self._engine = SenseVoiceEngine(device=device, hub=hub, pad_seconds=pad_seconds)
         elif self.family == "funasr-nano":
-            from asr_funasr_nano import FunASRNanoEngine
+            from livetranslate.asr.funasr_nano import FunASRNanoEngine
 
             self._engine = FunASRNanoEngine(
                 device=device,

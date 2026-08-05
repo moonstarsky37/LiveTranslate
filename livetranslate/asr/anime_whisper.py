@@ -16,7 +16,7 @@ class AnimeWhisperEngine:
     def __init__(self, device="cuda", hub="hf"):
         import torch
         from transformers import pipeline
-        from model_manager import get_local_model_path
+        from livetranslate.model_manager import get_local_model_path
 
         if device.startswith("cuda") and not torch.cuda.is_available():
             log.warning("CUDA not available, falling back to CPU")

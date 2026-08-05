@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QFont, QTextCursor
-from i18n import t
+from livetranslate.i18n import t
 
 
 class QLogHandler(logging.Handler):

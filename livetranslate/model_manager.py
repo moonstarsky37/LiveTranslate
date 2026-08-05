@@ -62,7 +62,9 @@ def _proxy_env(proxy: str):
             os.environ["NO_PROXY"] = saved_no_proxy
         urllib.request.install_opener(saved_opener)
 
-APP_DIR = Path(__file__).parent
+from livetranslate.paths import ROOT
+
+APP_DIR = ROOT
 MODELS_DIR = APP_DIR / "models"
 
 ASR_MODEL_IDS = {

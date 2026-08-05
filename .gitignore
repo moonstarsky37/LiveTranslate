@@ -24,3 +24,6 @@ dist/
 build/
 release/
 *.egg-info/
+
+# Personal local launcher
+start-local.cmd

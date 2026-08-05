@@ -5,7 +5,7 @@ import os
 import numpy as np
 from faster_whisper import WhisperModel
 
-from translator import LANGUAGE_DISPLAY
+from livetranslate.translation.translator import LANGUAGE_DISPLAY
 
 log = logging.getLogger("LiveTranslate.ASR")
 

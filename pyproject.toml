@@ -1,0 +1,58 @@
+[project]
+name = "livetranslate"
+version = "2026.8.0"
+description = "Real-time system-audio translation overlay for Windows (fork of TheDeathDragon/LiveTranslate)"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { file = "LICENSE" }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Vendored model code is not ours to lint.
+exclude = ["funasr_nano"]
+
+[tool.ruff.lint]
+# E402 ignored on purpose: torch must be imported before PyQt6 (see main.py).
+# E501 handled loosely during the incremental refactor; new code should comply.
+select = ["F", "E", "W"]
+ignore = ["E501", "E402"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+ignore_missing_imports = true
+# Legacy modules are exempted below (baseline); new modules must type-check.
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+# Baseline exemption for the pre-fork monolith files. Shrink this list as
+# Phase 3 splits and annotates them; never add new modules here.
+module = [
+    "main",
+    "livetranslate.main",
+    "livetranslate.model_manager",
+    "livetranslate.benchmark",
+    "livetranslate.core.*",
+    "livetranslate.asr.client",
+    "livetranslate.asr.server",
+    "livetranslate.asr.worker",
+    "livetranslate.asr.whisper",
+    "livetranslate.asr.sensevoice",
+    "livetranslate.asr.funasr",
+    "livetranslate.asr.funasr_nano",
+    "livetranslate.asr.anime_whisper",
+    "livetranslate.asr.remote",
+    "livetranslate.translation.translator",
+    "livetranslate.ui.*",
+    "livetranslate.i18n",
+    "funasr_nano.*",
+    "test_audio",
+]
+ignore_errors = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "local: needs heavy local deps (torch/CUDA) or hardware; excluded in CI",
+]

@@ -4,7 +4,9 @@ from pathlib import Path
 
 _strings: dict = {}
 _lang = "en"
-_dir = Path(__file__).parent / "i18n"
+# Locale yaml files and CHANGELOG_*.md live in this package directory
+_dir = Path(__file__).parent
+I18N_DIR = _dir
 
 
 def _detect_system_lang() -> str:

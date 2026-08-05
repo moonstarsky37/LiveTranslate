@@ -41,25 +41,44 @@ Linter: `ruff` (installed globally). Run `python -m ruff check --select F,E,W --
 The pipeline runs in a background thread: **Audio Capture (32ms chunks) -> VAD -> ASR -> Translation (async) -> Overlay**
 
 ```
-main.py (LiveTranslateApp)
-  |-- model_manager.py     Centralized model detection, download, cache utils
-  |-- audio_capture.py     WASAPI loopback via pyaudiowpatch, auto-reconnects on device change
-  |-- vad_processor.py     Silero VAD / energy-based / disabled modes, progressive silence + backtrack split
-  |-- asr_client.py        Main-process ASR worker manager (spawn, Pipe IPC, timeouts)
-  |-- asr_worker.py        ASR subprocess entrypoint; loads and owns one backend/model
-  |-- asr_engine.py        faster-whisper (Whisper) backend
-  |-- asr_sensevoice.py    FunASR SenseVoice backend (better for Japanese)
-  |-- asr_funasr_nano.py   FunASR Nano backend
-  |-- asr_anime_whisper.py Anime-Whisper backend (litagin/anime-whisper, ja anime/galgame)
-  |-- translator.py        OpenAI-compatible API client, streaming, JSON schema, context history
-  |-- subtitle_overlay.py  PyQt6 transparent overlay (2-row header: controls + model/lang combos)
-  |-- subtitle_window.py   Standalone subtitle window for OBS capture (outlined text, animations)
-  |-- subtitle_settings.py Subtitle window settings UI (grid layout, text line editor)
-  |-- control_panel.py     Settings UI (7 tabs: VAD/ASR, Translation, Style, Subtitle, Benchmark, Cache, Changelog)
-  |-- dialogs.py           Setup wizard, model download/load dialogs, ModelEditDialog
-  |-- benchmark.py         Translation benchmark (BENCH_SENTENCES, run_benchmark())
-  |-- log_window.py        Real-time log viewer
+main.py                      Thin shim (keeps start.bat working); real code in livetranslate/
+livetranslate/
+  main.py                    LiveTranslateApp + startup flow (splits into app.py/core/pipeline.py in Phase 3)
+  paths.py                   ROOT anchor — runtime data (config.yaml, models/, logs/, transcripts/,
+                             user_settings.json, vendored funasr_nano/) lives at the REPO ROOT
+  model_manager.py           Centralized model detection, download (HF-only), cache utils
+  benchmark.py               Translation benchmark (BENCH_SENTENCES, run_benchmark())
+  core/
+    audio_capture.py         WASAPI loopback via pyaudiowpatch, auto-reconnects on device change
+    vad_processor.py         Silero VAD / energy-based / disabled modes, progressive silence + backtrack split
+    transcript_writer.py     Transcript persistence
+  asr/
+    base.py                  ASREngine Protocol (the contract every backend implements)
+    client.py                Main-process ASR worker manager (spawn, Pipe IPC, timeouts)
+    worker.py                ASR subprocess entrypoint; loads and owns one backend/model
+    server.py / remote.py    Remote ASR server / client backend
+    whisper.py               faster-whisper backend
+    sensevoice.py            FunASR SenseVoice backend (better for Japanese)
+    funasr.py / funasr_nano.py  FunASR backends (vendored tree stays at repo root: funasr_nano/)
+    anime_whisper.py         Anime-Whisper backend (litagin/anime-whisper, ja anime/galgame)
+  translation/
+    translator.py            OpenAI-compatible API client, streaming, JSON schema, context history
+  ui/
+    control_panel.py         Settings UI (7 tabs; splits into a package in Phase 3)
+    dialogs.py               Setup wizard, model download/load dialogs, ModelEditDialog
+    log_window.py            Real-time log viewer
+    overlay/
+      subtitle_overlay.py    PyQt6 transparent overlay (2-row header: controls + model/lang combos)
+      subtitle_window.py     Standalone subtitle window for OBS capture (outlined text, animations)
+      subtitle_settings.py   Subtitle window settings UI
+  i18n/
+    __init__.py              t()/set_lang()/LANGUAGES + locale yaml files + CHANGELOG_*.md
 ```
+
+Launch: `python main.py` (shim), `python -m livetranslate`, or `start.bat` — all equivalent.
+Quality gates (CI: `.github/workflows/ci.yml`, windows-latest):
+`ruff check .` · `mypy .` (legacy modules baselined in pyproject.toml — never add new ones) ·
+`pytest tests/ -q` (characterization suite; heavy torch tests carry `-m local` and run only on the maintainer's machine).
 
 ### Threading / Process Model
 

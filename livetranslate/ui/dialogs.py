@@ -3,7 +3,6 @@ import logging
 import re
 import sys
 import threading
-from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QFont
@@ -26,8 +25,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from model_manager import download_asr, download_silero
-from i18n import t, get_lang
+from livetranslate.model_manager import download_asr, download_silero
+from livetranslate.i18n import t
 
 log = logging.getLogger("LiveTranslate.Dialogs")
 
@@ -207,7 +206,7 @@ class SetupWizardDialog(QDialog):
         # Persist settings the moment the user clicks Download (spec D4):
         # if the download is interrupted or the app is closed, the next launch
         # goes through the missing-model dialog instead of looping back here.
-        from control_panel import _save_settings
+        from livetranslate.ui.control_panel import _save_settings
 
         settings = {
             "hub": "hf",
@@ -653,7 +652,7 @@ class ModelEditDialog(QDialog):
         return result
 
 
-_I18N_DIR = Path(__file__).parent / "i18n"
+from livetranslate.i18n import I18N_DIR as _I18N_DIR
 
 
 def _changelog_to_html(text: str) -> str:
@@ -679,7 +678,7 @@ def _changelog_to_html(text: str) -> str:
 
 def _load_latest_changelog() -> tuple[str, str]:
     """Return (first_h2_title, html) for the latest changelog. Uses i18n lang."""
-    from i18n import get_lang
+    from livetranslate.i18n import get_lang
     lang = get_lang()
     path = _I18N_DIR / f"CHANGELOG_{lang}.md"
     if not path.exists():

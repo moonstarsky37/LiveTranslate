@@ -4,7 +4,6 @@ Configures text lines, background, alignment for the subtitle window.
 """
 
 import os
-from pathlib import Path
 
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QColor, QFontDatabase
@@ -28,10 +27,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from i18n import t, LANGUAGES
-from subtitle_window import DEFAULT_SUBTITLE_WIN_SETTINGS
+from livetranslate.i18n import t, LANGUAGES
+from livetranslate.ui.overlay.subtitle_window import DEFAULT_SUBTITLE_WIN_SETTINGS
 
-_PROJECT_DIR = Path(__file__).parent
+from livetranslate.paths import ROOT
+
+_PROJECT_DIR = ROOT
 
 
 class _ColorButton(QPushButton):

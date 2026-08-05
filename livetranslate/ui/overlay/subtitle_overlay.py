@@ -2,7 +2,7 @@ import ctypes
 import os
 
 import psutil
-from i18n import t, LANGUAGES
+from livetranslate.i18n import t, LANGUAGES
 from PyQt6.QtCore import QPoint, QPropertyAnimation, QEasingCurve, QSize, Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QCursor, QFont
 from PyQt6.QtWidgets import (
@@ -525,7 +525,7 @@ class MonitorBar(QWidget):
             )
         cost_str = ""
         if self._cost > 0:
-            from i18n import get_lang
+            from livetranslate.i18n import get_lang
             symbol = "¥" if get_lang() == "zh" else "$"
             cost_str = f' <span style="color:#fa5;">{symbol}{self._cost:.4f}</span>'
         self._stats_label.setText(
