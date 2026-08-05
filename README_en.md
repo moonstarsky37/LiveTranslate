@@ -1,6 +1,6 @@
 # LiveTranslate
 
-**English** | [中文](README_zh.md)
+[繁體中文](README.md)｜**English**｜[简体中文](README_zh-CN.md)
 
 Real-time audio translation for Windows. Captures system audio (WASAPI loopback) and optional microphone input, runs ASR, translates via LLM API, and displays results in a transparent overlay.
 
@@ -30,12 +30,12 @@ Works with any system audio — videos, livestreams, voice chat. No player modif
 - **Low-latency VAD**: 32ms chunks + Silero VAD with adaptive silence detection
 - **Transparent overlay**: Always-on-top, click-through, draggable, 14 color themes
 - **CUDA acceleration**: GPU-accelerated ASR inference
-- **Auto model management**: Setup wizard, ModelScope / HuggingFace dual sources
+- **Auto model management**: Setup wizard, models downloaded from HuggingFace
 - **Built-in benchmark**: Compare translation model speed and quality
 
 ## Changelog
 
-See [English Changelog](i18n/CHANGELOG_en.md) | [中文更新日志](i18n/CHANGELOG_zh.md)
+See [English Changelog](i18n/CHANGELOG_en.md) | [繁體中文更新日誌](i18n/CHANGELOG_zh-TW.md) | [简体中文更新日志](i18n/CHANGELOG_zh-CN.md)
 
 ## Requirements
 
@@ -48,12 +48,12 @@ See [English Changelog](i18n/CHANGELOG_en.md) | [中文更新日志](i18n/CHANGE
 
 ### Portable build (no Python required, recommended for non-developers)
 
-Download `LiveTranslate-portable-*.zip` from [Releases](https://github.com/TheDeathDragon/LiveTranslate/releases), unzip, and double-click **`start.bat`**. The first run auto-downloads a portable Python 3.12 and installs GPU-aware dependencies — no Python installation needed.
+Download `LiveTranslate-portable-*.zip` from [Releases](https://github.com/moonstarsky37/LiveTranslate/releases), unzip, and double-click **`start.bat`**. The first run auto-downloads a portable Python 3.12 and installs GPU-aware dependencies — no Python installation needed.
 
 ### From source
 
 ```bash
-git clone https://github.com/TheDeathDragon/LiveTranslate.git
+git clone https://github.com/moonstarsky37/LiveTranslate.git
 cd LiveTranslate
 ```
 
@@ -90,7 +90,7 @@ pip install -r requirements.txt
 
 ## First Launch
 
-1. Setup wizard appears — choose download source (ModelScope / HuggingFace) and cache path
+1. Setup wizard appears — pick a proxy mode if needed, then click Start Download (models come from HuggingFace)
 2. Silero VAD + SenseVoice models download automatically (~1GB)
 3. Main UI appears when ready
 

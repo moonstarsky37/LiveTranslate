@@ -37,7 +37,7 @@ Windows 即時語音翻譯工具。擷取系統音訊（WASAPI loopback）與可
 
 ## 更新日誌
 
-查看 [繁體中文更新日誌](i18n/CHANGELOG_zh-TW.md) | [简体中文更新日志](i18n/CHANGELOG_zh.md) | [English Changelog](i18n/CHANGELOG_en.md)
+查看 [繁體中文更新日誌](i18n/CHANGELOG_zh-TW.md) | [简体中文更新日志](i18n/CHANGELOG_zh-CN.md) | [English Changelog](i18n/CHANGELOG_en.md)
 
 ## 系統需求
 

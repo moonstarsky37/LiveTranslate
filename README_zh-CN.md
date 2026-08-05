@@ -1,6 +1,6 @@
 # LiveTranslate
 
-[English](README.md) | **中文**
+[繁體中文](README.md)｜[English](README_en.md)｜**简体中文**
 
 Windows 实时音频翻译工具。捕获系统音频（WASAPI loopback）和可选的麦克风输入，语音识别后调用 LLM API 翻译，结果显示在透明悬浮字幕窗口上。
 
@@ -30,12 +30,12 @@ Windows 实时音频翻译工具。捕获系统音频（WASAPI loopback）和可
 - **低延迟 VAD**：32ms 音频块 + Silero VAD，自适应静音检测
 - **透明悬浮窗**：始终置顶、鼠标穿透、可拖拽，14 种配色主题
 - **CUDA 加速**：ASR 模型 GPU 推理
-- **模型自动管理**：首次启动向导，支持 ModelScope / HuggingFace 双源
+- **模型自动管理**：首次启动向导，模型统一从 HuggingFace 下载
 - **内置基准测试**：对比翻译模型速度和质量
 
 ## 更新日志
 
-查看 [中文更新日志](i18n/CHANGELOG_zh.md) | [English Changelog](i18n/CHANGELOG_en.md)
+查看 [简体中文更新日志](i18n/CHANGELOG_zh-CN.md) | [繁體中文更新日誌](i18n/CHANGELOG_zh-TW.md) | [English Changelog](i18n/CHANGELOG_en.md)
 
 ## 系统要求
 
@@ -48,12 +48,12 @@ Windows 实时音频翻译工具。捕获系统音频（WASAPI loopback）和可
 
 ### 绿色版（免装 Python，推荐新手）
 
-从 [Releases](https://github.com/TheDeathDragon/LiveTranslate/releases) 下载 `LiveTranslate-portable-*.zip`，解压后双击 **`start.bat`** 即可。首次运行会自动下载便携版 Python 3.12 并按显卡安装依赖，无需预装任何 Python。
+从 [Releases](https://github.com/moonstarsky37/LiveTranslate/releases) 下载 `LiveTranslate-portable-*.zip`，解压后双击 **`start.bat`** 即可。首次运行会自动下载便携版 Python 3.12 并按显卡安装依赖，无需预装任何 Python。
 
 ### 从源码安装
 
 ```bash
-git clone https://github.com/TheDeathDragon/LiveTranslate.git
+git clone https://github.com/moonstarsky37/LiveTranslate.git
 cd LiveTranslate
 ```
 
@@ -90,7 +90,7 @@ pip install -r requirements.txt
 
 ## 首次使用
 
-1. 弹出设置向导——选择下载源（ModelScope 适合国内，HuggingFace 适合海外）和缓存路径
+1. 弹出设置向导——按需选择代理模式，点击「开始下载」（模型统一从 HuggingFace 下载）
 2. 自动下载 Silero VAD + SenseVoice 模型（约 1GB）
 3. 下载完成后进入主界面
 
