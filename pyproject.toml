@@ -35,6 +35,9 @@ module = [
     "livetranslate.benchmark",
     "livetranslate.core.*",
     # moved legacy monolith code (Phase 3); un-baseline when annotated
+    # (livetranslate.core.pipeline is already covered by livetranslate.core.*
+    # above; listed explicitly so it is un-baselined with the rest of the batch)
+    "livetranslate.core.pipeline",
     "livetranslate.asr.supervisor",
     "livetranslate.asr.client",
     "livetranslate.asr.server",
