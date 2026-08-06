@@ -39,6 +39,11 @@ import os
 import torch  # noqa: F401
 
 from livetranslate.core.audio_capture import AudioCapture
+from livetranslate.core.segmentation import (
+    is_short_utterance,
+    split_sentences,
+    strip_committed_overlap,
+)
 from livetranslate.core.vad_processor import VADProcessor
 from livetranslate.asr.client import ASRClient, ASRWorkerError, ASRWorkerExited, ASRWorkerTimeout
 from livetranslate.translation.translator import Translator, RepetitionError
@@ -1354,61 +1359,7 @@ class LiveTranslateApp:
                 log.warning("Translation executor shut down, skipping")
 
     # ── Incremental ASR ──
-
-    _pysbd_cache = {}  # lang -> pysbd.Segmenter
-
-    @staticmethod
-    def _get_segmenter(lang: str):
-        import pysbd
-        if lang not in LiveTranslateApp._pysbd_cache:
-            pysbd_lang = lang if lang in pysbd.languages.LANGUAGE_CODES else "en"
-            LiveTranslateApp._pysbd_cache[lang] = pysbd.Segmenter(
-                language=pysbd_lang, clean=False
-            )
-        return LiveTranslateApp._pysbd_cache[lang]
-
-    def _split_sentences(self, text: str, lang: str = "en") -> list[str]:
-        """Split text into sentences using pysbd, with comma fallback for long text."""
-        seg = self._get_segmenter(lang)
-        parts = [p for p in seg.segment(text) if p.strip()]
-        if len(parts) > 1:
-            return parts
-
-        # Comma fallback for long unsplit text — split at last balanced comma
-        # CJK 「、」at 25 chars; all commas at 60 chars (long sentence, reduce latency)
-        min_len = 25 if any(c == '、' for c in text) else 60
-        if len(text) > min_len:
-            for i in range(len(text) - 8, 5, -1):
-                if text[i] in ',，;；、':
-                    before = text[:i + 1].strip()
-                    after = text[i + 1:].strip()
-                    if before and after and len(before) > 15 and len(after) > 3:
-                        return [before, after]
-
-        return parts
-
-    @staticmethod
-    def _is_short_utterance(text: str) -> bool:
-        """Check if text has ≤8 alphanumeric chars (likely noise/filler/fragment)."""
-        alnum = sum(1 for c in text if c.isalnum())
-        return alnum <= 8
-
-    def _strip_committed_overlap(self, text: str) -> str:
-        """Remove text that overlaps with previously committed content."""
-        if not self._interim_committed_tail:
-            return text
-        tail = self._interim_committed_tail.lower().rstrip()
-        text_lower = text.lower()
-        # Check if text starts with a suffix of the committed tail
-        max_check = min(len(tail), len(text_lower))
-        for overlap_len in range(max_check, 2, -1):
-            if text_lower[:overlap_len] == tail[-overlap_len:]:
-                stripped = text[overlap_len:].strip()
-                if stripped:
-                    log.debug(f"Stripped echo overlap ({overlap_len} chars): '{text[:overlap_len]}...'")
-                    return stripped
-                return ""
-        return text
+    # Text utilities live in livetranslate.core.segmentation (pure, unit-tested)
 
     def _do_interim_asr(self) -> bool:
         """Run ASR on current VAD buffer, output complete sentences, trim consumed audio.
@@ -1446,12 +1397,12 @@ class LiveTranslateApp:
             return False
 
         # Strip echo from previous commit's overlap
-        full_text = self._strip_committed_overlap(full_text)
+        full_text = strip_committed_overlap(full_text, self._interim_committed_tail)
         if not full_text:
             return False
 
         split_start = time.perf_counter()
-        sentences = self._split_sentences(full_text, result["language"])
+        sentences = split_sentences(full_text, result["language"])
         split_ms = (time.perf_counter() - split_start) * 1000
         if len(sentences) <= 1:
             return False
@@ -1502,7 +1453,7 @@ class LiveTranslateApp:
             text = sent.strip()
             if not text:
                 continue
-            if self._is_short_utterance(text):
+            if is_short_utterance(text):
                 self._interim_pending += text
                 log.debug(f"Interim short utterance buffered: '{text}', pending='{self._interim_pending}'")
                 continue
@@ -1604,7 +1555,7 @@ class LiveTranslateApp:
         original_text = result["text"].strip()
 
         # Strip echo from previous commit's overlap
-        original_text = self._strip_committed_overlap(original_text)
+        original_text = strip_committed_overlap(original_text, self._interim_committed_tail)
 
         # Prepend any remaining pending short utterances
         if self._interim_pending:

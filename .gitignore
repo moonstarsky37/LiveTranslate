@@ -27,3 +27,6 @@ release/
 
 # Personal local launcher
 start-local.cmd
+
+# Local development notes - never publish
+CLAUDE.md

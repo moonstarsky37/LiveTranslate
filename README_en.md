@@ -22,7 +22,7 @@ Audio is captured in 32ms chunks; Silero VAD segments complete utterances and fe
 ## Features
 
 - Multiple ASR engines: faster-whisper, SenseVoice, FunASR Nano, and Anime-Whisper (tuned for Japanese anime and galgames)
-- Translation via any OpenAI-compatible API: cloud services such as DeepSeek, GPT, and Qwen, or local ones such as Ollama, llama.cpp server, and vLLM — with a local model the whole pipeline runs offline
+- Translation via any OpenAI-compatible API: cloud services such as OpenAI, or local ones such as Ollama, llama.cpp server, and vLLM — with a local model the whole pipeline runs offline
 - Without a local GPU, speech recognition can be offloaded to another GPU machine on the LAN — see [REMOTE_ASR.md](REMOTE_ASR.md)
 - Streaming character-by-character output; streaming, structured JSON, context history, and thinking can each be configured per model
 - Microphone mix-in, so both sides of a voice call get translated
@@ -83,16 +83,16 @@ A setup wizard appears on first launch: click Start Download to fetch the Silero
 
 ## Translation API
 
-Settings → Translation tab:
+Settings → Translation tab. Using a local llama.cpp server (`llama-server`) as the example:
 
-| Parameter | Example |
+| Parameter | Example (local llama-server) |
 |-----------|---------|
-| API Base | `https://api.deepseek.com/v1` |
-| API Key | key |
-| Model | `deepseek-chat` |
-| Proxy | `none` / `system` / custom URL |
+| API Base | `http://localhost:8080/v1` |
+| API Key | any non-empty value (e.g. `sk-local`; local servers don't check it) |
+| Model | the model alias loaded by llama-server, e.g. `translategemma` |
+| Proxy | `none` (direct local connection, bypassing any system proxy) |
 
-Local models are configured the same way: point API Base at the local server, e.g. `http://localhost:11434/v1` for Ollama or `http://localhost:8080/v1` for llama.cpp server, and fill the API Key field with any value.
+With a local model the whole pipeline runs offline. Other services are configured the same way — just swap API Base and Model: `http://localhost:11434/v1` for Ollama (vLLM likewise), or a cloud service such as OpenAI with `https://api.openai.com/v1` + `gpt-4o-mini` and a real API key.
 
 ## Project layout
 
