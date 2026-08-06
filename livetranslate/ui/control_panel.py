@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import threading
@@ -50,35 +49,23 @@ from livetranslate.model_manager import (
 from livetranslate.i18n import t, LANGUAGES
 from livetranslate.ui.overlay.subtitle_settings import SubtitleSettingsWidget
 
+from livetranslate.config.store import SettingsStore
 from livetranslate.paths import ROOT
 
 log = logging.getLogger("LiveTranslate.Panel")
 
-SETTINGS_FILE = ROOT / "user_settings.json"
+# Single settings entry point (Phase 2). The wrappers below keep the legacy
+# call sites working; new code should take a SettingsStore directly.
+_STORE = SettingsStore()
+SETTINGS_FILE = _STORE.settings_path
 
 
 def _load_saved_settings() -> dict | None:
-    try:
-        if SETTINGS_FILE.exists():
-            data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
-            migrate_funasr_settings(data)
-            log.info(f"Loaded saved settings from {SETTINGS_FILE}")
-            return data
-    except Exception as e:
-        log.warning(f"Failed to load settings: {e}")
-    return None
+    return _STORE.load()
 
 
 def _save_settings(settings: dict):
-    try:
-        tmp = SETTINGS_FILE.with_suffix(".tmp")
-        tmp.write_text(
-            json.dumps(settings, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-        tmp.replace(SETTINGS_FILE)
-        log.info(f"Settings saved to {SETTINGS_FILE}")
-    except Exception as e:
-        log.warning(f"Failed to save settings: {e}")
+    _STORE.save(settings)
 
 
 class ControlPanel(QWidget):

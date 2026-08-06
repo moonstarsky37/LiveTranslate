@@ -10,7 +10,6 @@ import threading
 import queue
 import gc
 from concurrent.futures import ThreadPoolExecutor
-import yaml
 import time
 import numpy as np
 from pathlib import Path
@@ -26,7 +25,6 @@ from livetranslate.model_manager import (
     ASR_DISPLAY_NAMES,
     MODELS_DIR,
     local_faster_whisper_display_name,
-    migrate_funasr_settings,
     normalize_asr_engine_selection,
     normalize_funasr_model_key,
     resolve_custom_whisper_model,
@@ -152,11 +150,10 @@ def create_app_icon() -> QIcon:
 
 
 def load_config():
-    from livetranslate.paths import ROOT
+    # config.yaml is read-only factory defaults, served by the settings store
+    from livetranslate.config.store import SettingsStore
 
-    config_path = ROOT / "config.yaml"
-    with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+    return SettingsStore().factory_defaults()
 
 
 class LiveTranslateApp:
@@ -1746,22 +1743,9 @@ def main():
     config.setdefault("asr", {})
     config["asr"].setdefault("asr_engine", "funasr")
     config["asr"].setdefault("funasr_model", DEFAULT_FUNASR_MODEL)
+    # Migrations (funasr normalization + fork hub/zh rules) now live inside
+    # SettingsStore.load(), which _load_saved_settings() delegates to.
     saved = _load_saved_settings()
-    migrate_funasr_settings(saved)
-    # Fork migrations (silent, written back): hub is always hf; bare "zh"
-    # language values map to zh-TW.
-    if saved:
-        _fork_migrated = False
-        if saved.get("hub") == "ms":
-            saved["hub"] = "hf"
-            _fork_migrated = True
-        for _lang_key in ("target_language", "ui_lang"):
-            if saved.get(_lang_key) == "zh":
-                saved[_lang_key] = "zh-TW"
-                _fork_migrated = True
-        if _fork_migrated:
-            _save_settings(saved)
-            log.info("Fork settings migration applied (hub→hf / zh→zh-TW)")
 
     # Log actual effective config
     _asr_eng = (saved or {}).get("asr_engine", config["asr"].get("asr_engine", "funasr"))
