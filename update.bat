@@ -36,9 +36,12 @@ if errorlevel 1 (
     echo.
 )
 
-:: Pull latest code
+:: Pull latest code — pinned to origin/main (this fork), never any other remote
+echo Updating from:
+git remote get-url origin
+echo.
 echo Pulling latest changes...
-git pull
+git pull origin main
 if errorlevel 1 (
     echo.
     echo [ERROR] git pull failed. Check for local conflicts.

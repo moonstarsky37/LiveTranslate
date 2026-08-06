@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 
-INSTALL_ENTRYPOINTS = ("install.ps1", "update.bat", "build_release.ps1")
+INSTALL_ENTRYPOINTS = ("scripts/install.ps1", "update.bat", "scripts/build_release.ps1")
 
 
 def _requirement_lines() -> set[str]:
