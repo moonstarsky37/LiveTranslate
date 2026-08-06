@@ -1,56 +1,47 @@
 # LiveTranslate
 
-繁體中文｜[English](README_en.md)｜[简体中文](README_zh-CN.md)
+繁體中文｜[English](README_en.md)
 
-> 本專案 fork 自 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate)（MIT）。本 fork 差異：模型下載一律走 HuggingFace（移除 ModelScope）、首啟精靈移除自動倒數（下載一律手動確認）、繁體中文（台灣）為第一級語言與主文件。
-
-Windows 即時語音翻譯工具。擷取系統音訊（WASAPI loopback）與可選的麥克風輸入，語音辨識後呼叫 LLM API 翻譯，結果顯示在透明的字幕浮窗上。
-
-適用於看外語影片、直播、語音對話等情境——不需修改播放器，全域音訊擷取即開即用。
+LiveTranslate 是 Windows 上的即時語音翻譯工具：擷取系統正在播放的音訊，經語音辨識後交由 LLM 翻譯，字幕以透明浮窗顯示在畫面最上層。觀看外語影片、直播，或進行語音通話時，不需修改播放器的任何設定即可使用。
 
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Windows](https://img.shields.io/badge/Platform-Windows-0078d4)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-## 螢幕截圖
-
 ![LiveTranslate](screenshot/zh.png)
 
-## 安裝影片
+## 運作方式
 
-[![安裝示範](https://img.shields.io/badge/Bilibili-安裝示範-00A1D6?logo=bilibili)](https://www.bilibili.com/video/BV1K2Awz6Euw) 適用於看外語影片、直播、ASMR 等情境，也可以用語音輸入即時並行翻譯多種語言（上游作者錄製）
+```
+系統音訊 (WASAPI) → VAD (Silero) → 語音辨識 (ASR) → LLM 翻譯 → 字幕浮窗
+        ↑ 可選擇混入麥克風
+```
 
-## 功能特性
+音訊以 32ms 為單位擷取，Silero VAD 切分出完整語句後送入 ASR，辨識結果再交由設定好的翻譯模型處理。除翻譯 API 外，整條管線皆在本機執行；具備 NVIDIA 顯示卡時，ASR 會以 CUDA 加速。
 
-- **即時翻譯管線**：系統音訊 → VAD → ASR → LLM 翻譯 → 字幕顯示
-- **多 ASR 引擎**：faster-whisper、SenseVoice、FunASR Nano、Anime-Whisper
-- **遠端 ASR**：透過 HTTP 把語音辨識放到 GPU 機器上跑 —— 見 [REMOTE_ASR.md](REMOTE_ASR.md)
-- **相容任意 OpenAI 格式 API**：DeepSeek、Grok、Qwen、GPT、Ollama、vLLM 等
-- **串流翻譯顯示**：翻譯結果逐字即時顯示
-- **模型獨立設定**：串流傳輸、結構化輸出（JSON）、上下文歷史、停用思考
-- **麥克風混音**：可選擇把麥克風輸入混合到系統音訊一起辨識
-- **低延遲 VAD**：32ms 音訊區塊 + Silero VAD，自適應靜音偵測
-- **透明字幕浮窗**：永遠置頂、滑鼠穿透、可拖曳，14 種配色主題
-- **CUDA 加速**：ASR 模型 GPU 推論
-- **模型自動管理**：首次啟動精靈，模型一律從 HuggingFace 下載（可設定下載 Proxy）
-- **內建效能測試**：比較翻譯模型的速度與品質
+## 功能
 
-## 更新日誌
-
-查看 [繁體中文更新日誌](i18n/CHANGELOG_zh-TW.md) | [简体中文更新日志](i18n/CHANGELOG_zh-CN.md) | [English Changelog](i18n/CHANGELOG_en.md)
+- 多種 ASR 引擎可選：faster-whisper、SenseVoice、FunASR Nano，以及針對日語動畫與 Galgame 調校的 Anime-Whisper
+- 翻譯支援任何 OpenAI 相容 API：DeepSeek、GPT、Qwen 等雲端服務，或 Ollama、llama.cpp server、vLLM 等本地服務皆可，搭配本地模型即可完全離線使用
+- 本機沒有 GPU 時，語音辨識可交由區網內另一台 GPU 機器執行，詳見 [REMOTE_ASR.md](REMOTE_ASR.md)
+- 翻譯結果逐字串流顯示；串流、JSON 結構化輸出、上下文歷史、停用思考等選項可逐一針對各模型設定
+- 麥克風輸入可混入管線一併辨識，語音通話時雙方語音皆可翻譯
+- 字幕浮窗永遠置頂、滑鼠穿透、可拖曳，提供 14 種配色；另有獨立字幕視窗，方便 OBS 擷取
+- 辨識與翻譯結果自動存成逐字稿
+- 內建效能測試，可直接比較各翻譯模型的速度與品質
 
 ## 系統需求
 
-- **作業系統**：Windows 10/11
-- **Python**：3.10–3.12（免安裝版不需自行安裝）
-- **GPU**（建議）：NVIDIA GPU + CUDA 12.6（RTX 50 系列等 Blackwell 架構需要 CUDA 12.8）
-- **網路**：需要能連上翻譯 API 與 HuggingFace
+- Windows 10 / 11
+- Python 3.10–3.12（3.13 因相依套件尚未支援而排除；使用免安裝版則無此需求）
+- 建議配備 NVIDIA 顯示卡與 CUDA 12.6（RTX 50 系列等 Blackwell 架構需 CUDA 12.8）；純 CPU 亦可執行，惟辨識速度較慢
+- 網路需能連上翻譯 API 與 HuggingFace（翻譯採用本地模型時，僅初次下載 ASR 模型需要網路）
 
-## 快速開始
+## 安裝
 
-### 免安裝版（免裝 Python，推薦新手）
+### 免安裝版（不需安裝 Python）
 
-從 [Releases](https://github.com/moonstarsky37/LiveTranslate/releases) 下載 `LiveTranslate-portable-*.zip`，解壓縮後點兩下 **`start.bat`** 即可。首次執行會自動下載可攜版 Python 3.12 並依 GPU 安裝相依套件，不需預先安裝任何 Python。
+從 [Releases](https://github.com/moonstarsky37/LiveTranslate/releases) 下載 `LiveTranslate-portable-*.zip`，解壓縮後執行 `start.bat`。首次執行會自動下載可攜版 Python 3.12，並依照顯示卡安裝對應的相依套件。
 
 ### 從原始碼安裝
 
@@ -59,15 +50,14 @@ git clone https://github.com/moonstarsky37/LiveTranslate.git
 cd LiveTranslate
 ```
 
-點兩下 **`install.bat`** 一鍵安裝——腳本會自動：
-1. 偵測 Python 3.10–3.12（未安裝則透過 winget 自動安裝）
-2. 建立虛擬環境
-3. 偵測 NVIDIA GPU，選擇 CUDA / CPU 版 PyTorch
-4. 安裝全部相依套件
+執行 `install.bat`，安裝腳本會依序完成：
 
-安裝完成後點兩下 **`start.bat`** 啟動。
+1. 偵測 Python 3.10–3.12，未安裝時可經 winget 自動安裝
+2. 建立虛擬環境（既有環境損壞時會自動重建）
+3. 偵測 NVIDIA 顯示卡與運算能力，自動判斷 CUDA 12.6 或 12.8，安裝前可改選 CPU 版
+4. 安裝 PyTorch 與其餘相依套件
 
-更新時點兩下 **`update.bat`**——會自動拉取最新程式碼並更新相依套件（未安裝 Git 會透過 winget 自動安裝）。
+安裝過程會自動套用 Windows 系統 Proxy 設定。完成後執行 `start.bat` 啟動；日後執行 `update.bat` 即可更新（未安裝 Git 時同樣會經 winget 自動安裝）。
 
 <details>
 <summary>手動安裝</summary>
@@ -81,23 +71,15 @@ pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126 
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128  # CUDA（RTX 50 系列）
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu    # 僅 CPU
 
-# 相依套件
 pip install -r requirements.txt
-
-# 啟動
 .venv\Scripts\python.exe main.py
 ```
 
 </details>
 
-## 首次使用
+## 首次啟動
 
-1. 跳出首次啟動精靈——設定模型快取路徑；模型一律從 HuggingFace 下載，不需選擇下載來源
-2. 按「開始下載」——本 fork 已移除自動倒數，下載一律等你手動確認才開始
-3. 自動下載 Silero VAD + SenseVoice 模型（約 1GB）
-4. 下載完成後進入主介面
-
-> 若你的網路連 HuggingFace 不穩，可在精靈的「下載 Proxy」欄位填入 Proxy 位址，再按「開始下載」。
+首次啟動會出現設定精靈：按「開始下載」即會抓取 Silero VAD 與 SenseVoice 模型（約 1GB），完成後進入主介面。若連線 HuggingFace 不穩定，可於精靈內填入下載 Proxy。
 
 ## 設定翻譯 API
 
@@ -106,52 +88,42 @@ pip install -r requirements.txt
 | 參數 | 範例 |
 |------|------|
 | API Base | `https://api.deepseek.com/v1` |
-| API Key | 你的金鑰 |
+| API Key | 金鑰 |
 | Model | `deepseek-chat` |
 | Proxy | `none` / `system` / 自訂位址 |
 
-## 架構
+本地模型的設定方式相同：API Base 填入本地服務位址即可，例如 Ollama 的 `http://localhost:11434/v1` 或 llama.cpp server 的 `http://localhost:8080/v1`，API Key 填任意值。
+
+## 專案結構
+
+根目錄的 `main.py` 為入口 shim，實際程式碼在 `livetranslate/` 套件內。`python main.py`、`python -m livetranslate`、`start.bat` 三種啟動方式等價。
 
 ```
-Audio (WASAPI 32ms) → VAD (Silero) → ASR → LLM Translation → Overlay
-         ↑ 可選麥克風混音
+livetranslate/
+├── main.py             應用程式主體與啟動流程
+├── paths.py            執行期資料路徑（config.yaml、models/、logs/、transcripts/）
+├── model_manager.py    模型偵測、下載與快取管理
+├── benchmark.py        翻譯效能測試
+├── core/               音訊擷取（WASAPI loopback）、Silero VAD、逐字稿寫入
+├── asr/                各 ASR 後端、worker 子行程、遠端 ASR 伺服器與用戶端
+├── translation/        OpenAI 相容翻譯用戶端（串流、JSON、上下文）
+├── ui/                 設定面板、對話框、日誌視窗、字幕浮窗與 OBS 字幕視窗
+└── i18n/               介面語系檔與更新日誌
+funasr_nano/            vendored 模型程式碼
 ```
 
-```
-main.py                 主入口，管線編排
-├── audio_capture.py    WASAPI loopback + 麥克風混音
-├── vad_processor.py    Silero VAD
-├── asr_engine.py       faster-whisper 後端
-├── asr_funasr.py       統一 FunASR 模型選擇後端
-├── asr_sensevoice.py   SenseVoice 後端
-├── asr_funasr_nano.py  FunASR Nano 後端
-├── asr_anime_whisper.py Anime-Whisper 後端 (日語動畫/Galgame)
-├── asr_remote.py        遠端 Whisper 用戶端 (→ asr_server.py, 見 REMOTE_ASR.md)
-├── translator.py       OpenAI 相容翻譯用戶端 (串流/JSON/上下文)
-├── model_manager.py    模型下載與快取管理
-├── subtitle_overlay.py PyQt6 透明字幕浮窗
-├── control_panel.py    設定面板 UI (7 個標籤頁)
-├── dialogs.py          設定精靈、下載、模型設定對話框
-└── benchmark.py        翻譯效能測試
-```
+## 更新日誌
+
+[繁體中文](livetranslate/i18n/CHANGELOG_zh-TW.md) | [English](livetranslate/i18n/CHANGELOG_en.md)
 
 ## 致謝
 
-- [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate) — 本專案的原始出處，核心實作皆源自於此
+本專案 fork 自 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate)（MIT），核心實作源自上游。本 fork 的模型下載僅走 HuggingFace、下載前一律手動確認，並以繁體中文為主要語言。
+
 - [faster-whisper](https://github.com/SYSTRAN/faster-whisper) — 基於 CTranslate2 的 Whisper 推論
 - [FunASR](https://github.com/modelscope/FunASR) — SenseVoice / Fun-ASR-Nano
 - [Anime-Whisper](https://huggingface.co/litagin/anime-whisper) — 日語動畫/Galgame 專用 ASR
 - [Silero VAD](https://github.com/snakers4/silero-vad) — 語音活動偵測
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=TheDeathDragon%2FLiveTranslate%2Cmoonstarsky37%2FLiveTranslate&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=TheDeathDragon/LiveTranslate,moonstarsky37/LiveTranslate&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=TheDeathDragon/LiveTranslate,moonstarsky37/LiveTranslate&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=TheDeathDragon/LiveTranslate,moonstarsky37/LiveTranslate&type=date&legend=top-left" />
- </picture>
-</a>
 
 ## 授權
 

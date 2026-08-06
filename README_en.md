@@ -1,54 +1,47 @@
 # LiveTranslate
 
-[繁體中文](README.md)｜**English**｜[简体中文](README_zh-CN.md)
+[繁體中文](README.md)｜English
 
-Real-time audio translation for Windows. Captures system audio (WASAPI loopback) and optional microphone input, runs ASR, translates via LLM API, and displays results in a transparent overlay.
-
-Works with any system audio — videos, livestreams, voice chat. No player modifications needed.
+LiveTranslate is a real-time speech translation tool for Windows. It captures whatever the system is playing, runs speech recognition, translates the text through an LLM, and shows subtitles in a transparent overlay on top of the screen. Works for foreign-language videos, livestreams, and voice calls without touching any player settings.
 
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Windows](https://img.shields.io/badge/Platform-Windows-0078d4)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-## Screenshot
-
 ![LiveTranslate](screenshot/en.png)
 
-## Video
+## How it works
 
-[![Install & Demo](https://img.shields.io/badge/Bilibili-Install%20%26%20Demo-00A1D6?logo=bilibili)](https://www.bilibili.com/video/BV1K2Awz6Euw)
+```
+System audio (WASAPI) → VAD (Silero) → ASR → LLM translation → Overlay
+        ↑ optional mic mix-in
+```
+
+Audio is captured in 32ms chunks; Silero VAD segments complete utterances and feeds them to the ASR engine, whose output goes to the configured translation model. Everything except the translation API runs locally, and ASR is CUDA-accelerated when an NVIDIA GPU is present.
 
 ## Features
 
-- **Real-time pipeline**: System audio → VAD → ASR → LLM translation → overlay
-- **Multiple ASR engines**: faster-whisper, SenseVoice, FunASR Nano, Anime-Whisper
-- **Remote ASR**: offload speech recognition to a GPU machine over HTTP — see [REMOTE_ASR.md](REMOTE_ASR.md)
-- **Any OpenAI-compatible API**: DeepSeek, Grok, Qwen, GPT, Ollama, vLLM, etc.
-- **Streaming translation display**: Real-time character-by-character translation output
-- **Per-model settings**: Streaming, structured output (JSON), context history, disable thinking
-- **Microphone mix-in**: Optionally mix microphone input with system audio for ASR
-- **Low-latency VAD**: 32ms chunks + Silero VAD with adaptive silence detection
-- **Transparent overlay**: Always-on-top, click-through, draggable, 14 color themes
-- **CUDA acceleration**: GPU-accelerated ASR inference
-- **Auto model management**: Setup wizard, models downloaded from HuggingFace
-- **Built-in benchmark**: Compare translation model speed and quality
-
-## Changelog
-
-See [English Changelog](i18n/CHANGELOG_en.md) | [繁體中文更新日誌](i18n/CHANGELOG_zh-TW.md) | [简体中文更新日志](i18n/CHANGELOG_zh-CN.md)
+- Multiple ASR engines: faster-whisper, SenseVoice, FunASR Nano, and Anime-Whisper (tuned for Japanese anime and galgames)
+- Translation via any OpenAI-compatible API: cloud services such as DeepSeek, GPT, and Qwen, or local ones such as Ollama, llama.cpp server, and vLLM — with a local model the whole pipeline runs offline
+- Without a local GPU, speech recognition can be offloaded to another GPU machine on the LAN — see [REMOTE_ASR.md](REMOTE_ASR.md)
+- Streaming character-by-character output; streaming, structured JSON, context history, and thinking can each be configured per model
+- Microphone mix-in, so both sides of a voice call get translated
+- Always-on-top overlay with click-through, dragging, and 14 color themes, plus a standalone subtitle window for OBS capture
+- Transcripts of recognition and translation results are saved automatically
+- Built-in benchmark for comparing translation models on speed and quality
 
 ## Requirements
 
-- **OS**: Windows 10/11
-- **Python**: 3.10–3.12 (or use the portable build)
-- **GPU** (recommended): NVIDIA + CUDA 12.6 (Blackwell GPUs like RTX 50xx require CUDA 12.8)
-- **Network**: Access to a translation API
+- Windows 10 / 11
+- Python 3.10–3.12 (3.13 is excluded due to dependency support; not needed with the portable build)
+- NVIDIA GPU with CUDA 12.6 recommended (Blackwell GPUs such as the RTX 50 series need CUDA 12.8); CPU-only works but transcription is slower
+- Network access to the translation API and HuggingFace (with a local translation model, network is only needed for the initial ASR model download)
 
-## Quick Start
+## Install
 
-### Portable build (no Python required, recommended for non-developers)
+### Portable build (no Python installation required)
 
-Download `LiveTranslate-portable-*.zip` from [Releases](https://github.com/moonstarsky37/LiveTranslate/releases), unzip, and double-click **`start.bat`**. The first run auto-downloads a portable Python 3.12 and installs GPU-aware dependencies — no Python installation needed.
+Download `LiveTranslate-portable-*.zip` from [Releases](https://github.com/moonstarsky37/LiveTranslate/releases), unzip, and run `start.bat`. The first run downloads a portable Python 3.12 and installs dependencies matching the GPU.
 
 ### From source
 
@@ -57,15 +50,14 @@ git clone https://github.com/moonstarsky37/LiveTranslate.git
 cd LiveTranslate
 ```
 
-Double-click **`install.bat`** — the installer will:
-1. Detect Python 3.10–3.12 (auto-install via winget if missing)
-2. Create a virtual environment
-3. Auto-detect NVIDIA GPU and let you choose CUDA / CPU PyTorch
-4. Install all dependencies
+Run `install.bat`. The installer will:
 
-Then double-click **`start.bat`** to launch.
+1. Detect Python 3.10–3.12, offering to install it via winget if missing
+2. Create the virtual environment (a broken existing one is rebuilt automatically)
+3. Detect the NVIDIA GPU and its compute capability, choosing CUDA 12.6 or 12.8 automatically, with a CPU-only option before installing
+4. Install PyTorch and the remaining dependencies
 
-To update, double-click **`update.bat`** — it will pull the latest code and update dependencies (auto-installs Git via winget if missing).
+The Windows system proxy is applied automatically during installation. Run `start.bat` to launch, and `update.bat` later to update (Git is installed via winget if missing).
 
 <details>
 <summary>Manual install</summary>
@@ -74,25 +66,20 @@ To update, double-click **`update.bat`** — it will pull the latest code and up
 python -m venv .venv
 .venv\Scripts\activate
 
-# PyTorch (choose one)
+# PyTorch (pick one)
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126  # CUDA
-pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128  # CUDA (RTX 50xx)
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128  # CUDA (RTX 50 series)
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu    # CPU only
 
-# Dependencies
 pip install -r requirements.txt
-
-# Launch
 .venv\Scripts\python.exe main.py
 ```
 
 </details>
 
-## First Launch
+## First launch
 
-1. Setup wizard appears — pick a proxy mode if needed, then click Start Download (models come from HuggingFace)
-2. Silero VAD + SenseVoice models download automatically (~1GB)
-3. Main UI appears when ready
+A setup wizard appears on first launch: click Start Download to fetch the Silero VAD and SenseVoice models (~1GB). The main UI opens once downloads finish. A download proxy can be set in the wizard if the connection to HuggingFace is unreliable.
 
 ## Translation API
 
@@ -101,51 +88,42 @@ Settings → Translation tab:
 | Parameter | Example |
 |-----------|---------|
 | API Base | `https://api.deepseek.com/v1` |
-| API Key | Your key |
+| API Key | key |
 | Model | `deepseek-chat` |
 | Proxy | `none` / `system` / custom URL |
 
-## Architecture
+Local models are configured the same way: point API Base at the local server, e.g. `http://localhost:11434/v1` for Ollama or `http://localhost:8080/v1` for llama.cpp server, and fill the API Key field with any value.
+
+## Project layout
+
+`main.py` at the repository root is a thin entry shim; the actual code lives in the `livetranslate/` package. `python main.py`, `python -m livetranslate`, and `start.bat` are equivalent ways to launch.
 
 ```
-Audio (WASAPI 32ms) → VAD (Silero) → ASR → LLM Translation → Overlay
-         ↑ optional mic mix-in
+livetranslate/
+├── main.py             Application core and startup flow
+├── paths.py            Runtime data paths (config.yaml, models/, logs/, transcripts/)
+├── model_manager.py    Model detection, download, and cache management
+├── benchmark.py        Translation benchmark
+├── core/               Audio capture (WASAPI loopback), Silero VAD, transcript writer
+├── asr/                ASR backends, worker subprocess, remote ASR server and client
+├── translation/        OpenAI-compatible translation client (streaming, JSON, context)
+├── ui/                 Settings panel, dialogs, log window, overlay, OBS subtitle window
+└── i18n/               UI locales and changelogs
+funasr_nano/            Vendored model code
 ```
 
-```
-main.py                 Entry point & pipeline
-├── audio_capture.py    WASAPI loopback + mic mix-in
-├── vad_processor.py    Silero VAD
-├── asr_engine.py       faster-whisper backend
-├── asr_funasr.py       Unified FunASR model selector backend
-├── asr_sensevoice.py   SenseVoice backend
-├── asr_funasr_nano.py  FunASR Nano backend
-├── asr_anime_whisper.py Anime-Whisper backend (ja anime/galgame)
-├── asr_remote.py        Remote Whisper client (→ asr_server.py, see REMOTE_ASR.md)
-├── translator.py       OpenAI-compatible client (streaming, JSON schema, context)
-├── model_manager.py    Model download & cache
-├── subtitle_overlay.py PyQt6 overlay
-├── control_panel.py    Settings UI (7 tabs)
-├── dialogs.py          Wizard, download & model config dialogs
-└── benchmark.py        Translation benchmark
-```
+## Changelog
+
+[English](livetranslate/i18n/CHANGELOG_en.md) | [繁體中文](livetranslate/i18n/CHANGELOG_zh-TW.md)
 
 ## Acknowledgements
+
+This project is a fork of [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate) (MIT); the core implementation comes from upstream. This fork downloads models exclusively from HuggingFace, always requires manual confirmation before downloading, and uses Traditional Chinese as its primary language.
 
 - [faster-whisper](https://github.com/SYSTRAN/faster-whisper) — Whisper inference via CTranslate2
 - [FunASR](https://github.com/modelscope/FunASR) — SenseVoice / Fun-ASR-Nano
 - [Anime-Whisper](https://huggingface.co/litagin/anime-whisper) — Japanese anime/galgame ASR
 - [Silero VAD](https://github.com/snakers4/silero-vad) — Voice activity detection
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=TheDeathDragon%2FLiveTranslate&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=TheDeathDragon/LiveTranslate&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=TheDeathDragon/LiveTranslate&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=TheDeathDragon/LiveTranslate&type=date&legend=top-left" />
- </picture>
-</a>
 
 ## License
 
