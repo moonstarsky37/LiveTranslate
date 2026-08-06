@@ -60,6 +60,14 @@ class VADProcessor:
         self._fixed_silence_dur = 0.8
         self._silence_limit = self._seconds_to_chunks(0.8)
 
+        # Idle-tail flush: a held sub-min_speech buffer ("keeping for merge")
+        # would otherwise wait forever when the audio source goes silent for
+        # good (e.g. the video is paused) — the trailing sentence never shows.
+        # After this much further silence the held buffer is flushed through
+        # the density filter (real speech comes out, breath noise still drops).
+        self._tail_flush_limit = self._seconds_to_chunks(2.0)
+        self._held_tail_chunks = 0
+
         # Progressive silence: shorter threshold when buffer is long
         self._progressive_tiers = [
             # (buffer_seconds, silence_multiplier)
@@ -191,6 +199,18 @@ class VADProcessor:
         else:
             # Not speaking: feed pre-speech ring buffer
             self._pre_buffer.append(audio_chunk)
+            # A held short segment is waiting for the next speech onset to
+            # merge with; if silence just keeps coming, flush it instead of
+            # holding the user's last sentence hostage forever.
+            if self._speech_samples > 0:
+                self._held_tail_chunks += 1
+                if self._held_tail_chunks >= self._tail_flush_limit:
+                    dur = self._speech_samples / self.sample_rate
+                    log.debug(
+                        f"Idle-tail flush: held {dur:.1f}s segment after "
+                        f"{self._held_tail_chunks * self._chunk_duration:.1f}s of continued silence"
+                    )
+                    return self._flush_segment()
 
         # Force segment if max duration reached — backtrack to find best split point
         if self._speech_samples >= self.max_speech_samples:
@@ -216,6 +236,7 @@ class VADProcessor:
                 )
                 self._is_speaking = False
                 self._silence_counter = 0
+                self._held_tail_chunks = 0
                 return None
 
         return None
@@ -343,6 +364,7 @@ class VADProcessor:
         self._is_speaking = False
         self._silence_counter = 0
         self._was_trimmed = False
+        self._held_tail_chunks = 0
 
     def peek_buffer(self):
         """Read current speech buffer without flushing. Returns (audio, duration) or None."""
