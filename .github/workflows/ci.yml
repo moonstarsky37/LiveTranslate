@@ -26,5 +26,5 @@ jobs:
         # Heavy tests (torch/CUDA/audio hardware) are marked "local" and run
         # on the maintainer's machine before each release instead.
         run: >-
-          uv run --with pytest --with pyyaml --with openai --with httpx
+          uv run --with pytest --with pyyaml --with openai --with httpx --with pysbd
           python -m pytest tests/ -q -m "not local"
