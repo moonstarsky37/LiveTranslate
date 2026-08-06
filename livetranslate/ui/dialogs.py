@@ -30,9 +30,6 @@ from livetranslate.i18n import t
 
 log = logging.getLogger("LiveTranslate.Dialogs")
 
-SETTINGS_FILE = None  # set by control_panel on import
-_save_settings = None  # set by control_panel on import
-
 
 class _LogCapture(logging.Handler):
     """Captures log output and emits via callback."""
@@ -131,8 +128,13 @@ class SetupWizardDialog(QDialog):
 
     _log_signal = pyqtSignal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, store=None, parent=None):
         super().__init__(parent)
+        # Constructor-injected settings store (Phase 2); defaults to the
+        # standard repo-root store when the caller does not pass one.
+        from livetranslate.config.store import SettingsStore
+
+        self._store = store or SettingsStore()
         self.setWindowTitle(t("window_setup"))
         self.setMinimumWidth(520)
         self.setMinimumHeight(400)
@@ -206,24 +208,12 @@ class SetupWizardDialog(QDialog):
         # Persist settings the moment the user clicks Download (spec D4):
         # if the download is interrupted or the app is closed, the next launch
         # goes through the missing-model dialog instead of looping back here.
-        from livetranslate.ui.control_panel import _save_settings
+        # Default values come from the schema — single source of truth.
+        from livetranslate.config.schema import Settings
 
-        settings = {
-            "hub": "hf",
-            "download_proxy": self._proxy,
-            "asr_engine": "funasr",
-            "funasr_model": "sensevoice-small",
-            "vad_mode": "silero",
-            "vad_threshold": 0.3,
-            "energy_threshold": 0.02,
-            "min_speech_duration": 1.0,
-            "max_speech_duration": 8.0,
-            "silence_mode": "auto",
-            "silence_duration": 0.8,
-            "asr_language": "auto",
-            "target_language": "zh-TW",
-        }
-        _save_settings(settings)
+        settings = Settings().wizard_defaults()
+        settings["download_proxy"] = self._proxy
+        self._store.save(settings)
 
         logging.getLogger().addHandler(self._log_handler)
         self._orig_stderr = sys.stderr
