@@ -1,0 +1,10 @@
+#!/bin/sh
+# Fork policy: commit messages are English only (no CJK characters).
+# Enable with:  git config core.hooksPath .githooks
+if grep -qP '[\x{4e00}-\x{9fff}\x{3040}-\x{30ff}\x{ac00}-\x{d7af}]' "$1"; then
+  echo "commit-msg: rejected - commit messages must be English only (fork policy)." >&2
+  echo "Offending lines:" >&2
+  grep -nP '[\x{4e00}-\x{9fff}\x{3040}-\x{30ff}\x{ac00}-\x{d7af}]' "$1" >&2
+  exit 1
+fi
+exit 0

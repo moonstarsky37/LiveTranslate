@@ -22,7 +22,7 @@ LiveTranslate 是 Windows 上的即時語音翻譯工具：擷取系統正在播
 ## 功能
 
 - 多種 ASR 引擎可選：faster-whisper、SenseVoice、FunASR Nano，以及針對日語動畫與 Galgame 調校的 Anime-Whisper
-- 翻譯支援任何 OpenAI 相容 API：DeepSeek、GPT、Qwen 等雲端服務，或 Ollama、llama.cpp server、vLLM 等本地服務皆可，搭配本地模型即可完全離線使用
+- 翻譯支援任何 OpenAI 相容 API：OpenAI 等雲端服務，或 Ollama、llama.cpp server、vLLM 等本地服務皆可，搭配本地模型即可完全離線使用
 - 本機沒有 GPU 時，語音辨識可交由區網內另一台 GPU 機器執行，詳見 [REMOTE_ASR.md](REMOTE_ASR.md)
 - 翻譯結果逐字串流顯示；串流、JSON 結構化輸出、上下文歷史、停用思考等選項可逐一針對各模型設定
 - 麥克風輸入可混入管線一併辨識，語音通話時雙方語音皆可翻譯
@@ -83,16 +83,16 @@ pip install -r requirements.txt
 
 ## 設定翻譯 API
 
-設定 → 翻譯標籤頁：
+設定 → 翻譯標籤頁。以本機 llama.cpp server（`llama-server`）為例：
 
-| 參數 | 範例 |
+| 參數 | 範例（本機 llama-server） |
 |------|------|
-| API Base | `https://api.deepseek.com/v1` |
-| API Key | 金鑰 |
-| Model | `deepseek-chat` |
-| Proxy | `none` / `system` / 自訂位址 |
+| API Base | `http://localhost:8080/v1` |
+| API Key | 任意非空值（如 `sk-local`，本機服務不驗證） |
+| Model | llama-server 載入的模型別名，例如 `translategemma` |
+| Proxy | `none`（本機直連，避免被系統 Proxy 攔截） |
 
-本地模型的設定方式相同：API Base 填入本地服務位址即可，例如 Ollama 的 `http://localhost:11434/v1` 或 llama.cpp server 的 `http://localhost:8080/v1`，API Key 填任意值。
+搭配本機模型即可完全離線使用。其他服務設定方式相同，換掉 API Base 與 Model 即可：Ollama 為 `http://localhost:11434/v1`、vLLM 亦同；雲端服務如 OpenAI 填 `https://api.openai.com/v1` + `gpt-4o-mini` 並使用正式 API Key。
 
 ## 專案結構
 
