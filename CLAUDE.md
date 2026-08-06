@@ -46,6 +46,12 @@ livetranslate/
   main.py                    LiveTranslateApp + startup flow (splits into app.py/core/pipeline.py in Phase 3)
   paths.py                   ROOT anchor — runtime data (config.yaml, models/, logs/, transcripts/,
                              user_settings.json, vendored funasr_nano/) lives at the REPO ROOT
+  config/
+    schema.py                Settings dataclass — field names mirror user_settings.json keys;
+                             unknown keys preserved via extras; wizard defaults single source
+    store.py                 SettingsStore — the ONLY module allowed to read/write
+                             user_settings.json (atomic writes, load-time migrations) and to
+                             read config.yaml (read-only factory defaults)
   model_manager.py           Centralized model detection, download (HF-only), cache utils
   benchmark.py               Translation benchmark (BENCH_SENTENCES, run_benchmark())
   core/
@@ -92,8 +98,12 @@ Quality gates (CI: `.github/workflows/ci.yml`, windows-latest):
 
 ### Configuration
 
-- `config.yaml` - Base configuration (audio, ASR, translation, subtitle defaults)
+- `config.yaml` - Read-only factory defaults (audio, ASR, translation, subtitle defaults)
 - `user_settings.json` - Runtime settings persisted by control panel (models, VAD params, ASR engine choice, optional `cache_path`). Takes priority over config.yaml on load.
+- All settings I/O goes through `livetranslate.config.store.SettingsStore` (atomic
+  writes; funasr + fork migrations applied on load; fork migrations persisted).
+  `control_panel._load_saved_settings/_save_settings` are legacy wrappers over it —
+  new code should take a `SettingsStore` (see `SetupWizardDialog(store=...)`).
 
 ### Model Config
 
