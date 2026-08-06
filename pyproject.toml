@@ -34,6 +34,8 @@ module = [
     "livetranslate.model_manager",
     "livetranslate.benchmark",
     "livetranslate.core.*",
+    # moved legacy monolith code (Phase 3); un-baseline when annotated
+    "livetranslate.asr.supervisor",
     "livetranslate.asr.client",
     "livetranslate.asr.server",
     "livetranslate.asr.worker",
