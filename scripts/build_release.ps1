@@ -5,7 +5,8 @@
 param([string]$Version = "")
 
 $ErrorActionPreference = "Stop"
-$ProjectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+# This script lives in scripts/; the project root is one level up.
+$ProjectDir = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $ProjectDir
 
 function Write-Step { param($msg) Write-Host "`n[BUILD] $msg" -ForegroundColor Cyan }
@@ -21,8 +22,8 @@ $Tag   = if ($Version) { $Version } else { "$Stamp-$Sha" }
 $ZipPath = Join-Path $OutDir "LiveTranslate-portable-$Tag.zip"
 
 # Files only needed for the git-clone workflow; the portable zip ships its own launcher.
-$DropList = @("install.bat", "install.ps1", "update.bat", "start.bat",
-              "build_release.ps1", "CLAUDE.md", "test_audio.py", ".gitignore", "screenshot")
+$DropList = @("install.bat", "update.bat", "start.bat",
+              "scripts", ".gitignore", ".githooks", "screenshot")
 
 # ── 1. Clean staging ──
 Write-Step "Preparing staging directory..."

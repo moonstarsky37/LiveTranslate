@@ -23,7 +23,7 @@ Audio is captured in 32ms chunks; Silero VAD segments complete utterances and fe
 
 - Multiple ASR engines: faster-whisper, SenseVoice, FunASR Nano, and Anime-Whisper (tuned for Japanese anime and galgames)
 - Translation via any OpenAI-compatible API: cloud services such as OpenAI, or local ones such as Ollama, llama.cpp server, and vLLM — with a local model the whole pipeline runs offline
-- Without a local GPU, speech recognition can be offloaded to another GPU machine on the LAN — see [REMOTE_ASR.md](REMOTE_ASR.md)
+- Without a local GPU, speech recognition can be offloaded to another GPU machine on the LAN — see [REMOTE_ASR.md](docs/REMOTE_ASR.md)
 - Streaming character-by-character output; streaming, structured JSON, context history, and thinking can each be configured per model
 - Microphone mix-in, so both sides of a voice call get translated
 - Always-on-top overlay with click-through, dragging, and 14 color themes, plus a standalone subtitle window for OBS capture
