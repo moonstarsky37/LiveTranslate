@@ -39,6 +39,7 @@ module = [
     # above; listed explicitly so it is un-baselined with the rest of the batch)
     "livetranslate.core.pipeline",
     "livetranslate.asr.supervisor",
+    "livetranslate.asr.engine_switch",
     "livetranslate.asr.client",
     "livetranslate.asr.server",
     "livetranslate.asr.worker",
