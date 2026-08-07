@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-08-08 (v2026.08.08-tw.1)
+- Factory-default cleanup: removed the upstream-inherited API key (config.yaml now suggests a local llama-server + translategemma, with the conventional "sk-local" key); the first-launch API prefill derives from those factory defaults
+- The first-launch API hint is now vendor-neutral: any OpenAI-compatible API works, no specific service is recommended
+- Hardening: an empty API key no longer crashes startup (the client substitutes an inert placeholder; cloud APIs still return a normal auth error)
+
 ## 2026-08-07 (v2026.08.07-tw.1, first release of this fork)
 - This is the moonstarsky37/LiveTranslate fork: model downloads are HuggingFace-only (existing ModelScope caches remain readable)
 - Setup wizard redesign: the 15s auto-start countdown is gone, downloads start only on an explicit click; settings are persisted at click time, so an interrupted download resumes via the missing-model dialog instead of re-running the wizard

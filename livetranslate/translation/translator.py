@@ -106,7 +106,11 @@ PROMPT_PRESETS = {
 def make_openai_client(
     api_base: str, api_key: str, proxy: str = "none", timeout=None
 ) -> OpenAI:
-    kwargs = {"base_url": api_base, "api_key": api_key}
+    # The OpenAI SDK raises on a missing/empty api_key at construction time,
+    # which would crash startup when the config has no key yet. Local servers
+    # ignore the key anyway; a real request to a cloud API still fails with a
+    # normal auth error the UI can show.
+    kwargs = {"base_url": api_base, "api_key": api_key or "sk-no-key"}
     if timeout is not None:
         kwargs["timeout"] = httpx.Timeout(timeout, connect=5.0)
     if proxy == "system":
