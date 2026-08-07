@@ -112,13 +112,24 @@ livetranslate/
 funasr_nano/            Vendored model code
 ```
 
+## Differences from upstream
+
+This is a fork of [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate). The main changes:
+
+- **Models come from HuggingFace.** Upstream defaults to ModelScope, which is barely reachable on some networks; models you already downloaded keep working.
+- **The first-run setup was redone** — no more 15-second auto-start countdown; close the app mid-download and the next launch resumes where it left off.
+- **The UI and docs lead with Traditional Chinese**, and English and Simplified Chinese are still maintained.
+- **Fixed plenty of everyday bugs.**
+- **Added tests and CI.**
+- **Major internal refactoring.** The multi-thousand-line source files are now small modules.
+
 ## Changelog
 
 [English](livetranslate/i18n/CHANGELOG_en.md) | [繁體中文](livetranslate/i18n/CHANGELOG_zh-TW.md)
 
 ## Acknowledgements
 
-This project is a fork of [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate) (MIT); the core implementation comes from upstream. This fork downloads models exclusively from HuggingFace, always requires manual confirmation before downloading, and uses Traditional Chinese as its primary language.
+This project is a fork of [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate) (MIT); the core implementation of the audio pipeline, ASR engine integration and subtitle UI comes from upstream.
 
 - [faster-whisper](https://github.com/SYSTRAN/faster-whisper) — Whisper inference via CTranslate2
 - [FunASR](https://github.com/modelscope/FunASR) — SenseVoice / Fun-ASR-Nano
