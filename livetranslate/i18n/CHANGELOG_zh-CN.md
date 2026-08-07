@@ -1,5 +1,14 @@
 # 更新日志
 
+## 2026-08-07 (v2026.08.07-tw.1, 本 fork 首次发版)
+- 本版起为 moonstarsky37/LiveTranslate fork: 模型下载全面改走 HuggingFace (曾以 ModelScope 下载的旧缓存仍可读)
+- 首启向导重设计: 移除 15 秒自动倒计时, 下载只在明确点击按钮后开始; 设置在点击当下即写入, 下载中断后重启直接续走缺模型下载流程, 不再重回向导循环
+- 繁体中文 (zh-TW) 升为第一级语言: 新增繁中界面与繁中主文档, zh-TW/zh-HK 系统默认繁中; 旧设置 "zh" 自动迁移为 zh-TW
+- 修复 VAD: 短于最短语音长度的尾句在持续静音后改为强制送出, 暂停前的最后一句不再消失
+- 修复 requirements.txt 漏列 pysbd 导致全新安装在增量识别时崩溃的问题
+- 内部重构 (Phase 1-3): 代码 package 化 (livetranslate/), 设置统一入口 SettingsStore, main / control_panel / overlay / supervisor 巨石文件全数拆分, 行为以 AST 比对与特性测试钉住
+- 建立 CI 质量关卡 (ruff + mypy + pytest) 与 branch protection: CI 不绿进不了 main
+
 ## 2026-07-11
 - 修复 Fun-ASR-Nano 首次加载时 Qwen3-0.6B 权重下载被 180 秒超时打断的问题 (#32): 权重改为在模型下载阶段提前获取, ASR worker 启动不再等待大文件下载
 - 修复 ModelScope 1.38+ 缓存位置变化导致模型漏检的问题 (#32, #33): 兼容各版本 SDK 的全部缓存目录布局, 升级 SDK 后不再重复下载已有模型

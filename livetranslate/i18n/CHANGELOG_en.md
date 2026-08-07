@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-07 (v2026.08.07-tw.1, first release of this fork)
+- This is the moonstarsky37/LiveTranslate fork: model downloads are HuggingFace-only (existing ModelScope caches remain readable)
+- Setup wizard redesign: the 15s auto-start countdown is gone, downloads start only on an explicit click; settings are persisted at click time, so an interrupted download resumes via the missing-model dialog instead of re-running the wizard
+- Traditional Chinese (zh-TW) is now a first-class language: new zh-TW UI and primary docs, zh-TW/zh-HK systems default to it; legacy "zh" settings migrate to zh-TW automatically
+- VAD fix: a held sub-min-speech tail is now force-flushed after prolonged silence, so the last short sentence before a pause no longer disappears
+- Fixed requirements.txt missing pysbd, which crashed fresh installs at the first incremental-ASR call
+- Internal refactor (Phase 1-3): packaged layout (livetranslate/), single settings entry point (SettingsStore), and the main / control_panel / overlay / supervisor monoliths fully split, with behavior pinned by AST comparison and characterization tests
+- CI quality gate (ruff + mypy + pytest) with branch protection: nothing merges to main without green CI
+
 ## 2026-07-11
 - Fixed Fun-ASR-Nano first load: the Qwen3-0.6B weight download could be killed by the 180s worker startup timeout (#32); weights are now fetched up-front in the model download phase, so worker startup no longer waits on large downloads
 - Fixed model detection misses caused by the ModelScope 1.38+ cache location change (#32, #33): all cache layouts across SDK versions are recognized, so upgrading the SDK no longer re-downloads existing models
