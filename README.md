@@ -81,6 +81,13 @@ pip install -r requirements.txt
 
 首次啟動會出現設定精靈：按「開始下載」即會抓取 Silero VAD 與 SenseVoice 模型（約 1GB），完成後進入主介面。若連線 HuggingFace 不穩定，可於精靈內填入下載 Proxy。
 
+### 模型下載的速度與穩定性
+
+- 下載失敗（如 500 / CAS 錯誤）多為 HuggingFace 端暫時性故障，按「重試」即可續傳；已下載的部分不會重來。
+- HuggingFace 對匿名下載有限流。若下載緩慢，可至 [huggingface.co](https://huggingface.co/settings/tokens) 免費申請 token，在系統環境變數設定 `HF_TOKEN` 後重新啟動。
+- 精靈中的 Proxy 設定只影響模型下載；台灣一般網路環境選「不使用 Proxy」即可。
+- 中途關閉程式不會壞事：設定已在按下「開始下載」當下寫入，下次啟動會直接從缺少的模型續傳，不會重跑精靈。
+
 ## 設定翻譯 API
 
 設定 → 翻譯標籤頁。以本機 llama.cpp server（`llama-server`）為例：

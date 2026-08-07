@@ -8,6 +8,8 @@
 - 修复 requirements.txt 漏列 pysbd 导致全新安装在增量识别时崩溃的问题
 - 内部重构 (Phase 1-3): 代码 package 化 (livetranslate/), 设置统一入口 SettingsStore, main / control_panel / overlay / supervisor 巨石文件全数拆分, 行为以 AST 比对与特性测试钉住
 - 建立 CI 质量关卡 (ruff + mypy + pytest) 与 branch protection: CI 不绿进不了 main
+- (tw.2) 下载体验改善: 停用 HuggingFace Xet CDN 避开间歇性 500/CAS 中断; 下载失败改显示精简错误与重试提示, 完整 traceback 只进文件日志; 压掉 symlink 与匿名限流的英文警告墙
+- (tw.2) 首启向导与模型下载对话框补回关闭按钮 (X); 中途关闭安全, 下次启动由缺模型流程续传
 
 ## 2026-07-11
 - 修复 Fun-ASR-Nano 首次加载时 Qwen3-0.6B 权重下载被 180 秒超时打断的问题 (#32): 权重改为在模型下载阶段提前获取, ASR worker 启动不再等待大文件下载
