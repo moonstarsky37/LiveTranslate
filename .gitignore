@@ -29,3 +29,4 @@ start-local.cmd
 
 # Local development notes - never publish
 CLAUDE.md
+docs-local/
