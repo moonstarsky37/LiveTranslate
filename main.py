@@ -1,7 +1,7 @@
 """Thin launcher shim so `start.bat` and `.venv\\Scripts\\python.exe main.py`
 keep working after the package move. Real code lives in livetranslate/."""
 
-from livetranslate.main import main
+from livetranslate.app import main
 
 if __name__ == "__main__":
     import multiprocessing
