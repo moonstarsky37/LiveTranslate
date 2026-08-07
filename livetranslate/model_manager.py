@@ -327,6 +327,13 @@ def apply_cache_env():
     resolved = str(MODELS_DIR.resolve())
     os.environ["HF_HOME"] = os.path.join(resolved, "huggingface")
     os.environ["TORCH_HOME"] = os.path.join(resolved, "torch")
+    # Windows without Developer Mode cannot create symlinks; huggingface_hub
+    # then prints a scary (but harmless) warning wall on every download.
+    os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+    # The Xet-backed CDN intermittently fails with CAS/500 errors mid-download
+    # (seen in the field at 86% of a SenseVoice fetch); the classic HTTP path
+    # is slower but reliable. Users can re-enable Xet by setting the var to 0.
+    os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
     log.info(f"Cache env set: {resolved}")
 
 

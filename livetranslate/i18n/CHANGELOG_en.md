@@ -8,6 +8,8 @@
 - Fixed requirements.txt missing pysbd, which crashed fresh installs at the first incremental-ASR call
 - Internal refactor (Phase 1-3): packaged layout (livetranslate/), single settings entry point (SettingsStore), and the main / control_panel / overlay / supervisor monoliths fully split, with behavior pinned by AST comparison and characterization tests
 - CI quality gate (ruff + mypy + pytest) with branch protection: nothing merges to main without green CI
+- (tw.2) Download experience: disable the HuggingFace Xet CDN to dodge intermittent 500/CAS aborts; failed downloads now show a short error plus a retry hint (full traceback goes to the file log only); silenced the symlink / anonymous-rate-limit warning walls
+- (tw.2) Setup wizard and model download dialogs got their close button (X) back; closing mid-download is safe - the next launch resumes via the missing-model flow
 
 ## 2026-07-11
 - Fixed Fun-ASR-Nano first load: the Qwen3-0.6B weight download could be killed by the 180s worker startup timeout (#32); weights are now fetched up-front in the model download phase, so worker startup no longer waits on large downloads

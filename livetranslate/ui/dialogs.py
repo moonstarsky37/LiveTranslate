@@ -31,6 +31,13 @@ from livetranslate.i18n import t
 log = logging.getLogger("LiveTranslate.Dialogs")
 
 
+def _short_error(exc: BaseException) -> str:
+    """First line of an exception message, capped — the download dialogs show
+    this to the user, so the multi-line CDN/CAS error dumps stay in the log."""
+    text = str(exc).strip() or type(exc).__name__
+    return text.splitlines()[0][:200]
+
+
 class _LogCapture(logging.Handler):
     """Captures log output and emits via callback."""
 
@@ -138,9 +145,13 @@ class SetupWizardDialog(QDialog):
         self.setWindowTitle(t("window_setup"))
         self.setMinimumWidth(520)
         self.setMinimumHeight(400)
+        # WindowCloseButtonHint: closing is always safe — settings are persisted
+        # the moment the download button is clicked, so a later launch resumes
+        # via the missing-model dialog instead of re-running the wizard.
         self.setWindowFlags(
             Qt.WindowType.Dialog
             | Qt.WindowType.WindowTitleHint
+            | Qt.WindowType.WindowCloseButtonHint
             | Qt.WindowType.CustomizeWindowHint
             | Qt.WindowType.MSWindowsFixedSizeDialogHint
         )
@@ -235,8 +246,11 @@ class SetupWizardDialog(QDialog):
             download_silero(proxy=proxy)
             download_asr("funasr", model_size="sensevoice-small", hub="hf", proxy=proxy)
         except Exception as e:
-            self._error = str(e)
-            log.error(f"Download failed: {e}", exc_info=True)
+            self._error = _short_error(e)
+            # One friendly line for the visible dialog log; the full traceback
+            # goes to the DEBUG file log only.
+            log.error(f"Download failed: {self._error}")
+            log.debug("Download failure detail", exc_info=True)
 
     def _check_done(self):
         if self._download_thread.is_alive():
@@ -247,6 +261,7 @@ class SetupWizardDialog(QDialog):
 
         if self._error:
             self._append_log(f"\n{t('download_failed').format(error=self._error)}")
+            self._append_log(t("download_failed_hint"))
             self._download_btn.setEnabled(True)
             self._download_btn.setText(t("btn_retry"))
             self._proxy_mode.setEnabled(True)
@@ -267,9 +282,12 @@ class ModelDownloadDialog(QDialog):
         self.setWindowTitle(t("window_download"))
         self.setMinimumWidth(520)
         self.setMinimumHeight(300)
+        # WindowCloseButtonHint: closing rejects the dialog — startup then exits
+        # cleanly and a runtime engine switch keeps the current worker running.
         self.setWindowFlags(
             Qt.WindowType.Dialog
             | Qt.WindowType.WindowTitleHint
+            | Qt.WindowType.WindowCloseButtonHint
             | Qt.WindowType.CustomizeWindowHint
             | Qt.WindowType.MSWindowsFixedSizeDialogHint
         )
@@ -351,8 +369,11 @@ class ModelDownloadDialog(QDialog):
                         "whisper", model_size=size, hub=self._hub, proxy=self._proxy
                     )
         except Exception as e:
-            self._error = str(e)
-            log.error(f"Download failed: {e}", exc_info=True)
+            self._error = _short_error(e)
+            # One friendly line for the visible dialog log; the full traceback
+            # goes to the DEBUG file log only.
+            log.error(f"Download failed: {self._error}")
+            log.debug("Download failure detail", exc_info=True)
 
     def _check_done(self):
         if self._download_thread.is_alive():
@@ -363,6 +384,7 @@ class ModelDownloadDialog(QDialog):
 
         if self._error:
             self._append_log(f"\n{t('download_failed').format(error=self._error)}")
+            self._append_log(t("download_failed_hint"))
             self._close_btn.show()
             return
 

@@ -65,6 +65,9 @@ def setup_logging():
         "onnxruntime",
     ):
         logging.getLogger(noisy).setLevel(logging.WARNING)
+    # ERROR, not WARNING: huggingface_hub warns "unauthenticated requests" on
+    # every anonymous download, which lands in the user-visible dialog logs.
+    logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 
     logging.info(f"Log file: {log_file}")
 
