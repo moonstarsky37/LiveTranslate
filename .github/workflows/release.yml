@@ -26,7 +26,7 @@ jobs:
         run: |
           $version = "${{ github.event.inputs.version }}"
           if (-not $version -and "${{ github.ref_type }}" -eq "tag") { $version = "${{ github.ref_name }}" }
-          if ($version) { ./build_release.ps1 -Version $version } else { ./build_release.ps1 }
+          if ($version) { ./scripts/build_release.ps1 -Version $version } else { ./scripts/build_release.ps1 }
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v7
