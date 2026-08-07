@@ -45,6 +45,8 @@ LiveTranslate 是 Windows 上的即時語音翻譯工具：擷取系統正在播
 
 ### 從原始碼安裝
 
+> 本節僅適用 `git clone` 取得的原始碼。免安裝版 zip **不含** `install.bat` 與 `scripts/`（首次執行 `start.bat` 會自動完成環境安裝，不需要本節的任何步驟）。
+
 ```bash
 git clone https://github.com/moonstarsky37/LiveTranslate.git
 cd LiveTranslate
@@ -84,7 +86,7 @@ pip install -r requirements.txt
 ### 模型下載的速度與穩定性
 
 - 下載失敗（如 500 / CAS 錯誤）多為 HuggingFace 端暫時性故障，按「重試」即可續傳；已下載的部分不會重來。
-- HuggingFace 對匿名下載有限流。若下載緩慢，可至 [huggingface.co](https://huggingface.co/settings/tokens) 免費申請 token，在系統環境變數設定 `HF_TOKEN` 後重新啟動。
+- HuggingFace 對匿名下載有限流。若下載緩慢，可至 [huggingface.co](https://huggingface.co/settings/tokens) 免費申請 token，在 cmd 執行 `setx HF_TOKEN hf_你的token` 後**重新啟動程式**即可生效（程式會自動讀取，無需改任何設定檔）。目前尚無 GUI 設定欄位（規劃中）。
 - 精靈中的 Proxy 設定只影響模型下載；台灣一般網路環境選「不使用 Proxy」即可。
 - 中途關閉程式不會壞事：設定已在按下「開始下載」當下寫入，下次啟動會直接從缺少的模型續傳，不會重跑精靈。
 
@@ -119,13 +121,24 @@ livetranslate/
 funasr_nano/            vendored 模型程式碼
 ```
 
+## 本 fork 與上游的差異
+
+fork 自 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate)，主要改了這些：
+
+- **模型改從 HuggingFace 下載**。上游預設走 ModelScope，在部分網路環境幾乎連不上；之前下載好的模型不受影響，不用重抓。
+- **初始設定流程重做**，不會再自己倒數 15 秒就開始下載；中途關掉程式，下次打開會從斷掉的地方繼續。
+- **介面與文件改以繁體中文為主**，英文與簡體中文照常維護。
+- **修了不少日常使用的 bug**。
+- **補上測試與 CI**。
+- **內部大幅重構**。原本幾個兩千多行的大檔案拆成小模組。
+
 ## 更新日誌
 
 [繁體中文](livetranslate/i18n/CHANGELOG_zh-TW.md) | [English](livetranslate/i18n/CHANGELOG_en.md)
 
 ## 致謝
 
-本專案 fork 自 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate)（MIT），核心實作源自上游。本 fork 的模型下載僅走 HuggingFace、下載前一律手動確認，並以繁體中文為主要語言。
+本專案 fork 自 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate)（MIT），音訊管線、辨識引擎整合與字幕介面的核心實作源自上游。
 
 - [faster-whisper](https://github.com/SYSTRAN/faster-whisper) — 基於 CTranslate2 的 Whisper 推論
 - [FunASR](https://github.com/modelscope/FunASR) — SenseVoice / Fun-ASR-Nano
