@@ -184,11 +184,14 @@ def main():
         )
         info.exec()
 
+        # Prefill from the factory defaults; the user replaces them with
+        # their own endpoint, key and model (any OpenAI-compatible API).
+        _tc = config["translation"]
         dlg = ModelEditDialog(None, {
-            "name": "hunyuan-mt-chimera-7b",
-            "api_base": "http://127.0.0.1:1234/v1",
-            "api_key": "sk-lm-tHzDfNGm:dgxlip7eebn3HIMxivqN",
-            "model": "hunyuan-mt-chimera-7b",
+            "name": _tc["model"],
+            "api_base": _tc["api_base"],
+            "api_key": _tc["api_key"],
+            "model": _tc["model"],
         })
         dlg.setWindowTitle(t("setup_api_title"))
         if dlg.exec() == QDialog.DialogCode.Accepted:
