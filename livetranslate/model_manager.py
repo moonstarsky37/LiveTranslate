@@ -334,6 +334,12 @@ def apply_cache_env():
     # (seen in the field at 86% of a SenseVoice fetch); the classic HTTP path
     # is slower but reliable. Users can re-enable Xet by setting the var to 0.
     os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+    # huggingface_hub warns "You are sending unauthenticated requests to the HF
+    # Hub" on every anonymous download, twice (its own stderr handler plus ours).
+    # Setting the logger level cannot hold it: the library reconfigures its root
+    # logger when it is first imported, which happens long after setup_logging.
+    # This env var is read during that reconfiguration, so it survives.
+    os.environ.setdefault("HF_HUB_VERBOSITY", "error")
     log.info(f"Cache env set: {resolved}")
 
 

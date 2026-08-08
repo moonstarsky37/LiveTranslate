@@ -8,6 +8,7 @@
 - 暫停時清空 VAD 緩衝: 恢復後不再冒出暫停前的陳舊語音
 - 設定 → 辨識新增「最低語音密度」滑桿 (設 0 關閉): 停頓多的來源 (剪過的影片、講話慢) 不再被整段當噪音丟棄
 - 設定 → 快取新增 HuggingFace token (選填): 解除匿名下載限流, 內容不會寫進日誌
+- 修復下載時「unauthenticated requests」英文警告重複出現 (huggingface_hub 1.27 會在載入時覆蓋日誌等級, 改用環境變數壓制)
 
 ## 2026-08-08 (v2026.08.08-tw.1)
 - 出廠預設清理: 移除繼承自上游的預設 API 金鑰 (config.yaml 改為本地 llama-server + translategemma 建議值, 金鑰用慣例值 sk-local), 首啟精靈的 API 預填同步改自出廠預設

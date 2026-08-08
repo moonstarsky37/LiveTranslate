@@ -71,6 +71,10 @@ def setup_logging():
         logging.getLogger(noisy).setLevel(logging.WARNING)
     # ERROR, not WARNING: huggingface_hub warns "unauthenticated requests" on
     # every anonymous download, which lands in the user-visible dialog logs.
+    # This alone does not hold — the library resets its own root logger level
+    # when first imported, which is long after this runs. HF_HUB_VERBOSITY
+    # (set in model_manager.apply_cache_env) is what actually survives; this
+    # stays as the floor for the window before that import.
     logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 
     logging.info(f"Log file: {log_file}")

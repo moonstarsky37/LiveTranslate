@@ -8,6 +8,7 @@
 - Pausing now clears the VAD buffer, so resuming never replays speech captured before the pause
 - Settings -> ASR gained a "min speech density" slider (0 disables it): heavily-paused sources (clipped video, slow speakers) are no longer discarded wholesale as noise
 - Settings -> Cache gained an optional HuggingFace token field: lifts the anonymous download rate limit, and is never written to the log
+- Fixed the duplicated "unauthenticated requests" warning during downloads (huggingface_hub 1.27 overrides the logger level when it loads, so the suppression now goes through an environment variable)
 
 ## 2026-08-08 (v2026.08.08-tw.1)
 - Factory-default cleanup: removed the upstream-inherited API key (config.yaml now suggests a local llama-server + translategemma, with the conventional "sk-local" key); the first-launch API prefill derives from those factory defaults
