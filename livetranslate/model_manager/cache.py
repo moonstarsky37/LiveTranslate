@@ -1,241 +1,31 @@
-import os
-import contextlib
+"""Local model cache: where models live, whether they are complete, and
+how much disk they take. Everything that answers a question about the
+models/ directory without downloading anything."""
+
 import logging
+import os
 from pathlib import Path
+
+from livetranslate.paths import ROOT
+from livetranslate.model_manager.registry import (
+    ASR_DISPLAY_NAMES,
+    ASR_MODEL_IDS,
+    FUNASR_LEGACY_ENGINE_ALIASES,
+    SENSEVOICE_ONNX_FILES,
+    _CACHE_MODELS,
+    _MODEL_SIZE_BYTES,
+    _WHISPER_SIZES,
+    asr_model_id,
+    funasr_model_id,
+    funasr_profile,
+    normalize_funasr_model_key,
+)
 
 log = logging.getLogger("LiveTranslate.ModelManager")
 
-_PROXY_ENV_KEYS = (
-    "HTTP_PROXY",
-    "HTTPS_PROXY",
-    "ALL_PROXY",
-    "http_proxy",
-    "https_proxy",
-    "all_proxy",
-)
-
-
-@contextlib.contextmanager
-def _proxy_env(proxy: str):
-    """Temporarily route all download backends through a proxy.
-
-    proxy:
-        "system" / "" / None -> leave ambient env & OS proxy untouched
-        "none"               -> force-disable any proxy for this download
-        a URL                -> send urllib/requests/httpx traffic through it
-
-    Covers torch.hub (urllib), huggingface_hub and modelscope (requests),
-    which all honor the *_PROXY env vars; urllib additionally gets an explicit
-    opener so a previously cached default opener cannot bypass the setting.
-    """
-    import urllib.request
-
-    if proxy in ("system", "", None):
-        yield
-        return
-    saved_env: dict = {key: os.environ.get(key) for key in _PROXY_ENV_KEYS}
-    saved_no_proxy = os.environ.get("NO_PROXY")
-    saved_opener = getattr(urllib.request, "_opener", None)
-    try:
-        if proxy == "none":
-            for key in _PROXY_ENV_KEYS:
-                os.environ.pop(key, None)
-            os.environ["NO_PROXY"] = "*"
-            handler = urllib.request.ProxyHandler({})
-        else:
-            for key in _PROXY_ENV_KEYS:
-                os.environ[key] = proxy
-            os.environ.pop("NO_PROXY", None)
-            handler = urllib.request.ProxyHandler({"http": proxy, "https": proxy})
-        urllib.request.install_opener(urllib.request.build_opener(handler))
-        log.info(f"Download proxy active: {proxy}")
-        yield
-    finally:
-        for key, value in saved_env.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
-        if saved_no_proxy is None:
-            os.environ.pop("NO_PROXY", None)
-        else:
-            os.environ["NO_PROXY"] = saved_no_proxy
-        urllib.request.install_opener(saved_opener)
-
-from livetranslate.paths import ROOT
 
 APP_DIR = ROOT
 MODELS_DIR = APP_DIR / "models"
-
-ASR_MODEL_IDS = {
-    "sensevoice": "iic/SenseVoiceSmall",
-    "funasr-nano": "FunAudioLLM/Fun-ASR-Nano-2512",
-    "funasr-mlt-nano": "FunAudioLLM/Fun-ASR-MLT-Nano-2512",
-    "anime-whisper": "litagin/anime-whisper",
-    # The sherpa-onnx export of SenseVoiceSmall. Same model, int8 ONNX: 239MB
-    # instead of 936MB, loads in under a second, and needs no torch.
-    "sensevoice-onnx": "csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17",
-}
-
-# The repo also ships a 937MB fp32 model.onnx and test wavs we do not need;
-# only these two files are fetched.
-SENSEVOICE_ONNX_FILES = ("model.int8.onnx", "tokens.txt")
-
-FUNASR_MODEL_PROFILES = {
-    "sensevoice-small": {
-        "display_name": "SenseVoice Small",
-        "family": "sensevoice",
-        "legacy_engine": "sensevoice",
-        "modelscope_id": "iic/SenseVoiceSmall",
-        "huggingface_id": "FunAudioLLM/SenseVoiceSmall",
-        "estimated_bytes": 940_000_000,
-        "supports_padding": True,
-        "supports_language": True,
-    },
-    "funasr-nano-2512": {
-        "display_name": "Fun-ASR-Nano",
-        "family": "funasr-nano",
-        "legacy_engine": "funasr-nano",
-        "modelscope_id": "FunAudioLLM/Fun-ASR-Nano-2512",
-        "huggingface_id": "FunAudioLLM/Fun-ASR-Nano-2512",
-        # includes the separately-fetched Qwen3-0.6B weights (~1.5GB)
-        "estimated_bytes": 3_500_000_000,
-        "supports_padding": False,
-        "supports_language": True,
-    },
-    "funasr-mlt-nano-2512": {
-        "display_name": "Fun-ASR-MLT-Nano",
-        "family": "funasr-nano",
-        "legacy_engine": "funasr-mlt-nano",
-        "modelscope_id": "FunAudioLLM/Fun-ASR-MLT-Nano-2512",
-        "huggingface_id": "FunAudioLLM/Fun-ASR-MLT-Nano-2512",
-        # includes the separately-fetched Qwen3-0.6B weights (~1.5GB)
-        "estimated_bytes": 3_500_000_000,
-        "supports_padding": False,
-        "supports_language": True,
-    },
-}
-
-DEFAULT_FUNASR_MODEL = "sensevoice-small"
-
-FUNASR_LEGACY_ENGINE_ALIASES = {
-    "sensevoice": "sensevoice-small",
-    "funasr-nano": "funasr-nano-2512",
-    "funasr-mlt-nano": "funasr-mlt-nano-2512",
-}
-
-# HuggingFace repo ids for engines whose namespace differs from ModelScope.
-# SenseVoice lives under `iic/` on ModelScope but `FunAudioLLM/` on HuggingFace.
-ASR_MODEL_IDS_HF = {
-    "sensevoice": "FunAudioLLM/SenseVoiceSmall",
-}
-
-
-def asr_model_id(
-    engine_type: str, hub: str = "hf", funasr_model: str | None = None
-) -> str:
-    """Repo id for an engine. Downloads are HF-only; "ms" is accepted solely
-    to resolve ids when scanning legacy ModelScope cache directories."""
-    if engine_type == "funasr":
-        return funasr_model_id(funasr_model, hub)
-    if engine_type in FUNASR_LEGACY_ENGINE_ALIASES:
-        return funasr_model_id(FUNASR_LEGACY_ENGINE_ALIASES[engine_type], hub)
-    if hub != "ms" and engine_type in ASR_MODEL_IDS_HF:
-        return ASR_MODEL_IDS_HF[engine_type]
-    return ASR_MODEL_IDS[engine_type]
-
-ASR_DISPLAY_NAMES = {
-    "funasr": "FunASR",
-    "sensevoice": "SenseVoice Small",
-    "funasr-nano": "Fun-ASR-Nano",
-    "funasr-mlt-nano": "Fun-ASR-MLT-Nano",
-    "whisper": "Whisper",
-    "anime-whisper": "Anime-Whisper",
-    "remote-whisper": "Remote-Whisper",
-    "sensevoice-onnx": "SenseVoice ONNX",
-}
-
-_MODEL_SIZE_BYTES = {
-    "silero-vad": 2_000_000,
-    "sensevoice": 940_000_000,
-    "funasr-nano": 1_050_000_000,
-    "funasr-mlt-nano": 1_050_000_000,
-    "whisper-tiny": 78_000_000,
-    "whisper-base": 148_000_000,
-    "whisper-small": 488_000_000,
-    "whisper-medium": 1_530_000_000,
-    "whisper-large-v3": 3_100_000_000,
-    "anime-whisper": 3_100_000_000,
-    "sensevoice-onnx": 240_000_000,
-}
-
-_WHISPER_SIZES = ["tiny", "base", "small", "medium", "large-v3"]
-
-_CACHE_MODELS = [
-    ("SenseVoice Small", "funasr", "sensevoice-small"),
-    ("Fun-ASR-Nano", "funasr", "funasr-nano-2512"),
-    ("Fun-ASR-MLT-Nano", "funasr", "funasr-mlt-nano-2512"),
-    ("Anime-Whisper", "anime-whisper"),
-    ("SenseVoice ONNX", "sensevoice-onnx"),
-]
-
-
-def normalize_funasr_model_key(model_key: str | None) -> str:
-    if model_key in FUNASR_MODEL_PROFILES:
-        return model_key
-    if model_key in FUNASR_LEGACY_ENGINE_ALIASES:
-        return FUNASR_LEGACY_ENGINE_ALIASES[model_key]
-    return DEFAULT_FUNASR_MODEL
-
-
-def normalize_asr_engine_selection(
-    engine_type: str | None, funasr_model: str | None = None
-) -> tuple[str, str]:
-    if engine_type in FUNASR_LEGACY_ENGINE_ALIASES:
-        return "funasr", FUNASR_LEGACY_ENGINE_ALIASES[engine_type]
-    if engine_type == "funasr":
-        return "funasr", normalize_funasr_model_key(funasr_model)
-    return engine_type or "funasr", normalize_funasr_model_key(funasr_model)
-
-
-def migrate_funasr_settings(settings: dict | None) -> dict | None:
-    if not settings:
-        return settings
-    engine, model_key = normalize_asr_engine_selection(
-        settings.get("asr_engine"), settings.get("funasr_model")
-    )
-    settings["asr_engine"] = engine
-    if engine == "funasr":
-        settings["funasr_model"] = model_key
-    else:
-        settings.setdefault("funasr_model", DEFAULT_FUNASR_MODEL)
-    return settings
-
-
-def funasr_profile(model_key: str | None) -> dict:
-    return FUNASR_MODEL_PROFILES[normalize_funasr_model_key(model_key)]
-
-
-def funasr_model_options() -> list[tuple[str, str]]:
-    return [
-        (key, profile["display_name"])
-        for key, profile in FUNASR_MODEL_PROFILES.items()
-    ]
-
-
-def funasr_display_name(model_key: str | None) -> str:
-    return funasr_profile(model_key)["display_name"]
-
-
-def funasr_supports_padding(model_key: str | None) -> bool:
-    return bool(funasr_profile(model_key).get("supports_padding"))
-
-
-def funasr_model_id(model_key: str | None, hub: str = "hf") -> str:
-    # Downloads are HF-only (enforced in download_asr); "ms" is accepted solely
-    # for resolving ids when scanning legacy ModelScope cache directories.
-    profile = funasr_profile(model_key)
-    return profile["huggingface_id"] if hub != "ms" else profile["modelscope_id"]
 
 
 def _custom_whisper_path(value) -> Path | None:
@@ -291,9 +81,9 @@ def list_local_faster_whisper_models() -> list[dict]:
     if not MODELS_DIR.exists():
         return []
 
-    entries = []
-    name_counts = {}
-    seen = set()
+    entries: list[dict] = []
+    name_counts: dict[str, int] = {}
+    seen: set = set()
     try:
         model_bins = list(MODELS_DIR.rglob("model.bin"))
     except (OSError, PermissionError):
@@ -592,56 +382,6 @@ def get_local_model_path(engine_type, hub="hf", funasr_model: str | None = None)
         return _try_hf() or _try_ms()
 
 
-def download_silero(proxy: str = "system"):
-    if _has_silero_pkg():
-        log.info("Silero VAD bundled by silero-vad package, no download needed")
-        return
-    import torch
-
-    log.info("Downloading Silero VAD...")
-    with _proxy_env(proxy):
-        try:
-            model, _ = torch.hub.load(
-                repo_or_dir="snakers4/silero-vad:master",
-                model="silero_vad",
-                trust_repo=True,
-            )
-        except Exception as exc:
-            if "CERTIFICATE_VERIFY" not in str(exc):
-                raise
-            log.warning("SSL strict verification failed, retrying with relaxed flags")
-            model, _ = _load_silero_relaxed_ssl()
-    del model
-    log.info("Silero VAD downloaded")
-
-
-def _load_silero_relaxed_ssl():
-    # Python 3.13 enables VERIFY_X509_STRICT by default, rejecting certificates
-    # without an Authority Key Identifier (common behind SSL-inspecting proxies).
-    import ssl
-
-    import torch
-
-    strict = getattr(ssl, "VERIFY_X509_STRICT", 0)
-    original = ssl._create_default_https_context
-
-    def relaxed_context(*args, **kwargs):
-        ctx = ssl.create_default_context(*args, **kwargs)
-        ctx.verify_flags &= ~strict
-        return ctx
-
-    ssl._create_default_https_context = relaxed_context
-    try:
-        return torch.hub.load(
-            repo_or_dir="snakers4/silero-vad:master",
-            model="silero_vad",
-            trust_repo=True,
-            force_reload=True,
-        )
-    finally:
-        ssl._create_default_https_context = original
-
-
 def sensevoice_onnx_paths():
     """Locate the ONNX model + tokens in the HF cache, or None if incomplete.
 
@@ -676,100 +416,6 @@ def qwen_weights_present(model_dir) -> bool:
     if not qwen_dir.is_dir():
         return True
     return any(f.suffix in (".safetensors", ".bin") for f in qwen_dir.iterdir())
-
-
-def ensure_qwen_weights(model_dir, hub: str = "hf") -> None:
-    """Fetch Qwen3-0.6B weights into a nano model's embedded subdir (one-time).
-
-    Kept off the ASR worker startup path: its 180s ready timeout would otherwise
-    kill the process mid-download on slow links.
-    """
-    qwen_dir = Path(model_dir) / "Qwen3-0.6B"
-    if not qwen_dir.is_dir():
-        return
-    if any(f.suffix in (".safetensors", ".bin") for f in qwen_dir.iterdir()):
-        return
-    log.info("Downloading Qwen3-0.6B weights (one-time)...")
-    from huggingface_hub import snapshot_download
-
-    snapshot_download(
-        "Qwen/Qwen3-0.6B",
-        local_dir=str(qwen_dir),
-        ignore_patterns=["*.gguf"],
-    )
-    log.info("Qwen3-0.6B weights downloaded")
-
-
-def download_asr(engine, model_size="medium", hub="hf", proxy="system"):
-    # This fork downloads exclusively from HuggingFace (the hub parameter is
-    # kept only for caller compatibility). Legacy ModelScope caches remain
-    # usable via get_local_model_path()/is_asr_cached() scanning.
-    resolved = str(MODELS_DIR.resolve())
-    hf_cache = os.path.join(resolved, "huggingface", "hub")
-    with _proxy_env(proxy):
-        if engine == "funasr" or engine in FUNASR_LEGACY_ENGINE_ALIASES:
-            model_key = (
-                FUNASR_LEGACY_ENGINE_ALIASES[engine]
-                if engine in FUNASR_LEGACY_ENGINE_ALIASES
-                else normalize_funasr_model_key(model_size)
-            )
-            from huggingface_hub import snapshot_download
-
-            model_id = funasr_model_id(model_key)
-            log.info(f"Downloading {model_id} from HuggingFace...")
-            snapshot_download(repo_id=model_id, cache_dir=hf_cache)
-            funasr_dir = get_local_model_path("funasr", hub="hf", funasr_model=model_key)
-            neutralize_funasr_requirements(funasr_dir)
-            if funasr_dir and funasr_profile(model_key)["family"] == "funasr-nano":
-                ensure_qwen_weights(funasr_dir)
-        elif engine == "sensevoice-onnx":
-            from huggingface_hub import snapshot_download
-
-            model_id = ASR_MODEL_IDS[engine]
-            log.info(f"Downloading {model_id} from HuggingFace...")
-            # allow_patterns keeps this at 239MB; the repo also holds a 937MB
-            # fp32 model.onnx and sample wavs that we never load.
-            snapshot_download(
-                repo_id=model_id,
-                cache_dir=hf_cache,
-                allow_patterns=list(SENSEVOICE_ONNX_FILES),
-            )
-        elif engine == "anime-whisper":
-            # HF-only, ignore hub setting
-            from huggingface_hub import snapshot_download
-
-            model_id = ASR_MODEL_IDS[engine]
-            log.info(f"Downloading {model_id} from HuggingFace...")
-            snapshot_download(repo_id=model_id, cache_dir=hf_cache)
-        elif engine == "whisper":
-            if model_size not in _WHISPER_SIZES:
-                raise ValueError(f"Invalid local faster-whisper model: {model_size}")
-            from huggingface_hub import snapshot_download
-
-            model_id = f"Systran/faster-whisper-{model_size}"
-            log.info(f"Downloading {model_id} from HuggingFace...")
-            snapshot_download(repo_id=model_id, cache_dir=hf_cache)
-    log.info(f"ASR model downloaded: {engine}")
-
-
-def neutralize_funasr_requirements(model_dir) -> None:
-    """Skip FunASR's load-time `pip install -r requirements.txt`.
-
-    With trust_remote_code=True, FunASR detects requirements.txt in the model
-    dir and runs pip in a subprocess whose output is swallowed (PIPE). On a slow
-    or proxy-blocked PyPI this hangs indefinitely with no log output, and it can
-    pull heavy unused deps (e.g. gradio). All real deps already live in the venv,
-    so rename the file out of the way to make the check miss.
-    """
-    if not model_dir:
-        return
-    req = Path(model_dir) / "requirements.txt"
-    if req.exists():
-        try:
-            req.replace(req.with_name("requirements.txt.bundled"))
-            log.info(f"Skipped FunASR requirements install: {req}")
-        except OSError as exc:
-            log.warning(f"Failed to neutralize {req}: {exc}")
 
 
 def dir_size(path) -> int:
