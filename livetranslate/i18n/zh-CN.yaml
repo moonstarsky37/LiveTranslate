@@ -186,6 +186,12 @@ dialog_delete_msg: >-
 # 对话框
 window_setup: "LiveTranslate - 初始设置"
 group_download_proxy: "下载代理"
+group_setup_engine: "语音识别引擎"
+setup_engine_onnx: "SenseVoice ONNX (CPU) - 下载 239 MB, 不需显卡"
+setup_engine_onnx_tip: "以 ONNX Runtime 运行, 只使用 CPU。启动约 2 秒。与 FunASR 选项是同一个模型, 经 int8 量化。"
+setup_engine_torch: "SenseVoice (FunASR) - 下载 936 MB, 建议搭配 NVIDIA 显卡"
+setup_engine_torch_tip: "以 PyTorch 运行, 有 NVIDIA 显卡时使用 GPU 推理。首次启动约 30-60 秒, 之后约 6 秒。"
+setup_engine_hint: "之后可在 设置 → 识别 中更改。"
 btn_start_download: "开始下载"
 btn_retry: "重试"
 download_failed: "下载失败: {error}"
