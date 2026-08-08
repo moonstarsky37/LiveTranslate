@@ -781,4 +781,17 @@ def get_cache_entries():
                 entries.append(("Silero VAD", d))
                 break
 
+    # Sweep for anything else the hub cache is holding: repos we do not have a
+    # _CACHE_MODELS row for (Qwen3-0.6B leaves a refs-only stub behind, for one),
+    # and known repos the loops above skipped because the download is incomplete.
+    # Without this the tab under-reports disk usage and "delete all" leaves the
+    # unlisted directories on disk, which reads as "the cache is empty" when it
+    # is not.
+    if hf_base.is_dir():
+        claimed = {p.resolve() for _, p in entries}
+        for d in sorted(hf_base.glob("models--*")):
+            if not d.is_dir() or d.resolve() in claimed:
+                continue
+            entries.append((f"{d.name[len('models--'):].replace('--', '/')} (HuggingFace)", d))
+
     return entries

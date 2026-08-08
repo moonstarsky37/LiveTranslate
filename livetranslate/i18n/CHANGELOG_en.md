@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-08-08 (v2026.08.08-tw.4)
+- Settings -> Cache now lists every cached directory instead of only the ones it has a name for: unknown models, aborted half-downloads and leftover metadata stubs all show up, and "delete all" really empties the cache (those entries used to be invisible, so a "cleared" cache could still be holding gigabytes)
+
 ## 2026-08-08 (v2026.08.08-tw.3)
 - Installation now runs on uv: no preinstalled Python required — the installer fetches uv's own Python 3.12 instead of hunting for (or misusing) a system one
 - Fixed install.bat creating the virtual environment inside `scripts\`, where start.bat could not find it (affects source installs since v2026.08.07-tw.1)
