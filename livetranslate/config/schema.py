@@ -66,6 +66,7 @@ class Settings:
     interim_interval: float = 2.0
     auto_save_transcript: bool = True
     ui_lang: str = "zh-TW"
+    overlay_template: str = "classic"
     hf_token: str = ""
     cache_path: str | None = None
     style: dict[str, Any] = field(default_factory=dict)

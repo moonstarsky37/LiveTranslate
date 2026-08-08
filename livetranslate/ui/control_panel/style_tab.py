@@ -24,9 +24,32 @@ class StyleTabMixin:
     def _create_style_tab(self):
         from livetranslate.ui.overlay.subtitle_overlay import DEFAULT_STYLE
 
+        from livetranslate.ui.overlay.handle import (
+            DEFAULT_OVERLAY_TEMPLATE,
+            OVERLAY_TEMPLATES,
+        )
+
         widget = QWidget()
         layout = QVBoxLayout(widget)
         s = self._current_settings.get("style", dict(DEFAULT_STYLE))
+
+        # Header layout group. Kept out of the style dict on purpose: this is
+        # layout, not colors, and it must survive switching a color preset.
+        layout_group = QGroupBox(t("group_overlay_layout"))
+        layout_row = QHBoxLayout(layout_group)
+        layout_row.addWidget(QLabel(t("label_overlay_template")))
+        self._overlay_template_combo = QComboBox()
+        for key in OVERLAY_TEMPLATES:
+            self._overlay_template_combo.addItem(t(f"overlay_template_{key}"), key)
+        saved_template = self._current_settings.get(
+            "overlay_template", DEFAULT_OVERLAY_TEMPLATE
+        )
+        idx = self._overlay_template_combo.findData(saved_template)
+        self._overlay_template_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._overlay_template_combo.setToolTip(t("overlay_template_tooltip"))
+        self._overlay_template_combo.currentIndexChanged.connect(self._auto_save)
+        layout_row.addWidget(self._overlay_template_combo, 1)
+        layout.addWidget(layout_group)
 
         # Preset group
         preset_group = QGroupBox(t("group_preset"))

@@ -223,11 +223,15 @@ def build_tray(app, live_trans, overlay, subwin, panel, log_window, app_icon,
             log_window.raise_()
 
     def on_toggle_panel():
-        if panel.isVisible():
+        # Show-or-focus, not show-or-hide: the overlay is a top-most window, so
+        # an already-open panel is usually sitting behind it. Hiding it then
+        # looks like the Settings button did nothing at all.
+        if panel.isVisible() and panel.isActiveWindow():
             panel.hide()
         else:
             panel.show()
             panel.raise_()
+            panel.activateWindow()
 
     log_action.triggered.connect(on_toggle_log)
     panel_action.triggered.connect(on_toggle_panel)

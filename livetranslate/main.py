@@ -140,6 +140,8 @@ class LiveTranslateApp:
             apply_hf_token(settings["hf_token"])
         if "style" in settings and self._overlay:
             self._overlay.apply_style(settings["style"])
+        if "overlay_template" in settings and self._overlay:
+            self._overlay.set_template(settings["overlay_template"])
         if "asr_language" in settings:
             self._set_asr_language(settings["asr_language"])
         if "sensevoice_pad_seconds" in settings:

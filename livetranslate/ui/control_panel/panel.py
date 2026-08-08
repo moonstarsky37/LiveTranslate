@@ -2,7 +2,7 @@
 
 import logging
 
-from PyQt6.QtCore import QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
 from livetranslate.model_manager import (
@@ -51,6 +51,10 @@ class ControlPanel(
         super().__init__()
         self._config = config
         self.setWindowTitle(t("window_control_panel"))
+        # The overlay and the subtitle window are both WindowStaysOnTopHint, and
+        # raise_() cannot cross that z-band — without the same hint the panel
+        # opens *underneath* the very widgets it configures.
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self.setMinimumSize(480, 560)
         self.resize(520, 650)
 
@@ -206,6 +210,10 @@ class ControlPanel(
         if hasattr(self, "_auto_save_transcript_cb"):
             self._current_settings["auto_save_transcript"] = (
                 self._auto_save_transcript_cb.isChecked()
+            )
+        if hasattr(self, "_overlay_template_combo"):
+            self._current_settings["overlay_template"] = (
+                self._overlay_template_combo.currentData()
             )
         if hasattr(self, "_hf_token_edit"):
             self._current_settings["hf_token"] = self._hf_token_edit.text().strip()
