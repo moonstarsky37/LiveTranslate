@@ -72,7 +72,14 @@ ASR_MODEL_IDS = {
     "funasr-nano": "FunAudioLLM/Fun-ASR-Nano-2512",
     "funasr-mlt-nano": "FunAudioLLM/Fun-ASR-MLT-Nano-2512",
     "anime-whisper": "litagin/anime-whisper",
+    # The sherpa-onnx export of SenseVoiceSmall. Same model, int8 ONNX: 239MB
+    # instead of 936MB, loads in under a second, and needs no torch.
+    "sensevoice-onnx": "csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17",
 }
+
+# The repo also ships a 937MB fp32 model.onnx and test wavs we do not need;
+# only these two files are fetched.
+SENSEVOICE_ONNX_FILES = ("model.int8.onnx", "tokens.txt")
 
 FUNASR_MODEL_PROFILES = {
     "sensevoice-small": {
@@ -145,6 +152,7 @@ ASR_DISPLAY_NAMES = {
     "whisper": "Whisper",
     "anime-whisper": "Anime-Whisper",
     "remote-whisper": "Remote-Whisper",
+    "sensevoice-onnx": "SenseVoice ONNX",
 }
 
 _MODEL_SIZE_BYTES = {
@@ -158,6 +166,7 @@ _MODEL_SIZE_BYTES = {
     "whisper-medium": 1_530_000_000,
     "whisper-large-v3": 3_100_000_000,
     "anime-whisper": 3_100_000_000,
+    "sensevoice-onnx": 240_000_000,
 }
 
 _WHISPER_SIZES = ["tiny", "base", "small", "medium", "large-v3"]
@@ -167,6 +176,7 @@ _CACHE_MODELS = [
     ("Fun-ASR-Nano", "funasr", "funasr-nano-2512"),
     ("Fun-ASR-MLT-Nano", "funasr", "funasr-mlt-nano-2512"),
     ("Anime-Whisper", "anime-whisper"),
+    ("SenseVoice ONNX", "sensevoice-onnx"),
 ]
 
 
@@ -463,6 +473,8 @@ def is_asr_cached(engine_type, model_size="medium", hub="hf") -> bool:
             if not model_dir or not qwen_weights_present(model_dir):
                 return False
         return True
+    if engine_type == "sensevoice-onnx":
+        return sensevoice_onnx_paths() is not None
     if engine_type == "anime-whisper":
         # HF-only (not published to ModelScope). Check that snapshots dir actually
         # contains weight files; an .incomplete blob means a prior run aborted mid-download.
@@ -630,6 +642,30 @@ def _load_silero_relaxed_ssl():
         ssl._create_default_https_context = original
 
 
+def sensevoice_onnx_paths():
+    """Locate the ONNX model + tokens in the HF cache, or None if incomplete.
+
+    Returns (model_path, tokens_path). Only a snapshot holding BOTH files
+    counts: an aborted download leaves one of them missing, and sherpa-onnx
+    fails with an unhelpful error rather than reporting what is absent."""
+    org, name = ASR_MODEL_IDS["sensevoice-onnx"].split("/")
+    snap_root = (
+        MODELS_DIR / "huggingface" / "hub" / f"models--{org}--{name}" / "snapshots"
+    )
+    if not snap_root.is_dir():
+        return None
+    for snap in sorted(snap_root.iterdir()):
+        if not snap.is_dir():
+            continue
+        paths = [snap / f for f in SENSEVOICE_ONNX_FILES]
+        try:
+            if all(p.exists() and p.stat().st_size > 0 for p in paths):
+                return tuple(str(p) for p in paths)
+        except OSError:
+            continue
+    return None
+
+
 def qwen_weights_present(model_dir) -> bool:
     """Whether a nano model's embedded Qwen3-0.6B weights are in place.
 
@@ -686,6 +722,18 @@ def download_asr(engine, model_size="medium", hub="hf", proxy="system"):
             neutralize_funasr_requirements(funasr_dir)
             if funasr_dir and funasr_profile(model_key)["family"] == "funasr-nano":
                 ensure_qwen_weights(funasr_dir)
+        elif engine == "sensevoice-onnx":
+            from huggingface_hub import snapshot_download
+
+            model_id = ASR_MODEL_IDS[engine]
+            log.info(f"Downloading {model_id} from HuggingFace...")
+            # allow_patterns keeps this at 239MB; the repo also holds a 937MB
+            # fp32 model.onnx and sample wavs that we never load.
+            snapshot_download(
+                repo_id=model_id,
+                cache_dir=hf_cache,
+                allow_patterns=list(SENSEVOICE_ONNX_FILES),
+            )
         elif engine == "anime-whisper":
             # HF-only, ignore hub setting
             from huggingface_hub import snapshot_download

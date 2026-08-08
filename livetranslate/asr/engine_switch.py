@@ -68,6 +68,11 @@ class EngineSwitchMixin:
             engine_type, settings.get("funasr_model", self._funasr_model_key)
         )
         device = settings.get("asr_device", self._asr_device)
+        if engine_type == "sensevoice-onnx":
+            # This backend runs on CPU by design. Without pinning it here the
+            # monitor bar would claim "[cuda:0]", and changing the GPU picker
+            # would change the worker signature and trigger a pointless reload.
+            device = "cpu"
         # This fork downloads exclusively from HuggingFace; legacy "ms" is treated as "hf"
         hub = "hf"
         download_proxy = "system"

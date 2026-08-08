@@ -29,6 +29,11 @@ sentencepiece>=0.2.0
 tiktoken>=0.7.0
 transformers>=4.40.0
 
+# SenseVoice ONNX backend (asr/sensevoice_onnx.py). Bundles its own ONNX
+# Runtime, so this needs no torch and no CUDA: ~28MB installed, and the ASR
+# worker starts in ~2.5s instead of ~56s.
+sherpa-onnx>=1.13.0
+
 # VAD (bundles the Silero v5 model in the wheel — no GitHub/torch.hub download)
 silero-vad>=5.0
 

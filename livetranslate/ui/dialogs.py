@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QRadioButton,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -174,6 +175,31 @@ class SetupWizardDialog(QDialog):
         proxy_form.addRow(t("label_proxy_url"), self._proxy_url)
         layout.addWidget(proxy_group)
 
+        # Engine choice belongs here and nowhere else: this is the one moment
+        # where the difference is a cost the user is about to pay (what gets
+        # downloaded, and whether a graphics card is needed). The labels state
+        # size and hardware; the timings sit in the tooltips so the screen stays
+        # one glance rather than a quiz.
+        engine_group = QGroupBox(t("group_setup_engine"))
+        engine_layout = QVBoxLayout(engine_group)
+        self._engine_onnx = QRadioButton(t("setup_engine_onnx"))
+        self._engine_onnx.setToolTip(t("setup_engine_onnx_tip"))
+        self._engine_onnx.setChecked(True)  # works on every machine
+        self._engine_torch = QRadioButton(t("setup_engine_torch"))
+        self._engine_torch.setToolTip(t("setup_engine_torch_tip"))
+        engine_layout.addWidget(self._engine_onnx)
+        engine_layout.addWidget(self._engine_torch)
+        engine_hint = QLabel(t("setup_engine_hint"))
+        engine_hint.setStyleSheet("color: #888; font-size: 11px;")
+        engine_hint.setWordWrap(True)
+        engine_layout.addWidget(engine_hint)
+        layout.addWidget(engine_group)
+
+        # Collect the leftover height here instead of letting the layout inflate
+        # the group boxes: without it each box stretches to fill the dialog's
+        # minimum height and shows a large void under two rows of content.
+        layout.addStretch()
+
         self._download_btn = QPushButton(t("btn_start_download"))
         self._download_btn.clicked.connect(self._start_download)
         layout.addWidget(self._download_btn)
@@ -185,7 +211,10 @@ class SetupWizardDialog(QDialog):
             "background: #1e1e2e; color: #cdd6f4; border: 1px solid #444;"
         )
         self._log_view.hide()
-        layout.addWidget(self._log_view)
+        # Stretch 3 against the spacer's 1: while the log is hidden the spacer
+        # holds the leftover height, and once the download starts the log takes
+        # most of it back instead of staying at its size hint.
+        layout.addWidget(self._log_view, 3)
 
         self._error = None
         self._log_signal.connect(self._append_log)
@@ -208,13 +237,19 @@ class SetupWizardDialog(QDialog):
             self._log_view.verticalScrollBar().maximum()
         )
 
+    def selected_engine(self) -> str:
+        return "sensevoice-onnx" if self._engine_onnx.isChecked() else "funasr"
+
     def _start_download(self):
         self._download_btn.setEnabled(False)
         self._proxy_mode.setEnabled(False)
         self._proxy_url.setEnabled(False)
+        self._engine_onnx.setEnabled(False)
+        self._engine_torch.setEnabled(False)
         self._log_view.show()
 
         self._proxy = self._download_proxy()
+        self._engine = self.selected_engine()
 
         # Persist settings the moment the user clicks Download (spec D4):
         # if the download is interrupted or the app is closed, the next launch
@@ -224,6 +259,7 @@ class SetupWizardDialog(QDialog):
 
         settings = Settings().wizard_defaults()
         settings["download_proxy"] = self._proxy
+        settings["asr_engine"] = self._engine
         self._store.save(settings)
 
         logging.getLogger().addHandler(self._log_handler)
@@ -232,7 +268,7 @@ class SetupWizardDialog(QDialog):
 
         self._error = None
         self._download_thread = threading.Thread(
-            target=self._download_worker, args=(self._proxy,), daemon=True
+            target=self._download_worker, args=(self._proxy, self._engine), daemon=True
         )
         self._download_thread.start()
 
@@ -241,10 +277,15 @@ class SetupWizardDialog(QDialog):
         self._poll_timer.timeout.connect(self._check_done)
         self._poll_timer.start()
 
-    def _download_worker(self, proxy):
+    def _download_worker(self, proxy, engine):
         try:
             download_silero(proxy=proxy)
-            download_asr("funasr", model_size="sensevoice-small", hub="hf", proxy=proxy)
+            if engine == "sensevoice-onnx":
+                download_asr("sensevoice-onnx", hub="hf", proxy=proxy)
+            else:
+                download_asr(
+                    "funasr", model_size="sensevoice-small", hub="hf", proxy=proxy
+                )
         except Exception as e:
             self._error = _short_error(e)
             # One friendly line for the visible dialog log; the full traceback
