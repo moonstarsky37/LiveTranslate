@@ -13,7 +13,11 @@ from datetime import datetime
 # torch-before-PyQt6 import order at module level; import it first.
 from livetranslate.main import LiveTranslateApp
 
-from livetranslate.model_manager import DEFAULT_FUNASR_MODEL, get_missing_models
+from livetranslate.model_manager import (
+    DEFAULT_FUNASR_MODEL,
+    apply_hf_token,
+    get_missing_models,
+)
 
 from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox
 from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QFont, QFontDatabase
@@ -67,6 +71,10 @@ def setup_logging():
         logging.getLogger(noisy).setLevel(logging.WARNING)
     # ERROR, not WARNING: huggingface_hub warns "unauthenticated requests" on
     # every anonymous download, which lands in the user-visible dialog logs.
+    # This alone does not hold — the library resets its own root logger level
+    # when first imported, which is long after this runs. HF_HUB_VERBOSITY
+    # (set in model_manager.apply_cache_env) is what actually survives; this
+    # stays as the floor for the window before that import.
     logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 
     logging.info(f"Log file: {log_file}")
@@ -129,6 +137,8 @@ def main():
     # Migrations (funasr normalization + fork hub/zh rules) now live inside
     # SettingsStore.load(), which _load_saved_settings() delegates to.
     saved = _load_saved_settings()
+    # Before any download path runs (wizard, missing-model dialog, ASR worker).
+    apply_hf_token((saved or {}).get("hf_token"))
 
     # Log actual effective config
     _asr_eng = (saved or {}).get("asr_engine", config["asr"].get("asr_engine", "funasr"))

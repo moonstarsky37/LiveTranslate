@@ -19,10 +19,15 @@ class VADProcessor:
         min_speech_duration=1.0,
         max_speech_duration=15.0,
         chunk_duration=0.032,
+        min_density=0.25,
     ):
         self.sample_rate = sample_rate
         self.threshold = threshold
         self.energy_threshold = 0.02
+        # Speech density floor applied in _flush_segment. 0 disables the filter —
+        # needed for sources with heavy pausing (e.g. clipped YouTube speech),
+        # where a fixed 25% silently ate whole segments with no way to loosen it.
+        self.min_density = min_density
         self.min_speech_samples = int(min_speech_duration * sample_rate)
         self.max_speech_samples = int(max_speech_duration * sample_rate)
         self._chunk_duration = chunk_duration
@@ -123,10 +128,16 @@ class VADProcessor:
             self._fixed_silence_dur = settings["silence_duration"]
             if self._silence_mode == "fixed":
                 self._silence_limit = self._seconds_to_chunks(self._fixed_silence_dur)
+        if "vad_min_density" in settings:
+            try:
+                self.min_density = min(1.0, max(0.0, float(settings["vad_min_density"])))
+            except (TypeError, ValueError):
+                pass
         log.info(
             f"VAD settings updated: mode={self.mode}, threshold={self.threshold}, "
             f"silence={self._silence_mode} "
-            f"({self._silence_limit} chunks = {self._silence_limit * self._chunk_duration:.2f}s)"
+            f"({self._silence_limit} chunks = {self._silence_limit * self._chunk_duration:.2f}s), "
+            f"min_density={self.min_density:.0%}"
         )
 
     def _silero_confidence(self, audio_chunk: np.ndarray) -> float:
@@ -339,13 +350,13 @@ class VADProcessor:
         if not self._speech_buffer:
             return None
         # Speech density check: discard segments where most chunks are below threshold
-        if len(self._confidence_history) >= 4:
+        if self.min_density > 0 and len(self._confidence_history) >= 4:
             effective_threshold = self.threshold if self.mode == "silero" else 0.5
             voiced = sum(
                 1 for c in self._confidence_history if c >= effective_threshold
             )
             density = voiced / len(self._confidence_history)
-            if density < 0.25:
+            if density < self.min_density:
                 dur = self._speech_samples / self.sample_rate
                 log.debug(
                     f"Low speech density {density:.0%} ({voiced}/{len(self._confidence_history)}), "
@@ -365,6 +376,15 @@ class VADProcessor:
         self._silence_counter = 0
         self._was_trimmed = False
         self._held_tail_chunks = 0
+
+    def reset(self):
+        """Drop the accumulated buffer and all speech state.
+
+        Public counterpart of _reset for callers outside the segmentation logic
+        (pause/resume): audio captured before a pause must never resurface as a
+        stale segment once capture continues.
+        """
+        self._reset()
 
     def peek_buffer(self):
         """Read current speech buffer without flushing. Returns (audio, duration) or None."""

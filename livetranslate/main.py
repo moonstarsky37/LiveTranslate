@@ -134,6 +134,10 @@ class LiveTranslateApp:
 
     def _on_settings_changed(self, settings):
         self._vad.update_settings(settings)
+        if "hf_token" in settings:
+            from livetranslate.model_manager import apply_hf_token
+
+            apply_hf_token(settings["hf_token"])
         if "style" in settings and self._overlay:
             self._overlay.apply_style(settings["style"])
         if "asr_language" in settings:
@@ -429,11 +433,25 @@ class LiveTranslateApp:
 
     def pause(self):
         self._paused = True
-        self._interim_active = False
-        self._interim_pending = ""
-        self._last_interim_samples = 0
-        self._last_interim_check_time = 0.0
-        self._interim_committed_tail = ""
+        # The capture thread stops feeding the VAD while paused, so whatever it
+        # had accumulated must leave the buffer now — otherwise the half-spoken
+        # sentence resurfaces glued to the first sentence after resume. Send it
+        # through ASR rather than dropping it, matching what stop() does. The
+        # ASR thread stays alive while paused, so enqueueing keeps the Qt thread
+        # unblocked; the loop clears the interim bookkeeping once it lands.
+        with self._pipeline._vad_lock:
+            remaining = self._vad.force_flush()
+        if remaining is not None and self._running and self._asr_ready:
+            log.info(
+                f"Flushing {len(remaining) / 16000:.1f}s held at pause"
+            )
+            self._pipeline._enqueue_asr("vad_flush", remaining)
+        else:
+            self._interim_active = False
+            self._interim_pending = ""
+            self._last_interim_samples = 0
+            self._last_interim_check_time = 0.0
+            self._interim_committed_tail = ""
         if self._overlay:
             self._overlay.update_monitor(0.0, 0.0)
         log.info("Pipeline paused")

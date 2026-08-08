@@ -207,12 +207,14 @@ class ControlPanel(
             self._current_settings["auto_save_transcript"] = (
                 self._auto_save_transcript_cb.isChecked()
             )
+        if hasattr(self, "_hf_token_edit"):
+            self._current_settings["hf_token"] = self._hf_token_edit.text().strip()
         if hasattr(self, "_style_preset"):
             self._current_settings["style"] = self._collect_style()
         safe = {
             k: v
             for k, v in self._current_settings.items()
-            if k not in ("models", "system_prompt")
+            if k not in ("models", "system_prompt", "hf_token")
         }
         log.info(f"Settings applied: {safe}")
         self.settings_changed.emit(dict(self._current_settings))

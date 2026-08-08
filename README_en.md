@@ -33,7 +33,7 @@ Audio is captured in 32ms chunks; Silero VAD segments complete utterances and fe
 ## Requirements
 
 - Windows 10 / 11
-- Python 3.10–3.12 (3.13 is excluded due to dependency support; not needed with the portable build)
+- No preinstalled Python needed: `install.bat` fetches Python 3.12 through uv (3.13 is excluded due to dependency support)
 - NVIDIA GPU with CUDA 12.6 recommended (Blackwell GPUs such as the RTX 50 series need CUDA 12.8); CPU-only works but transcription is slower
 - Network access to the translation API and HuggingFace (with a local translation model, network is only needed for the initial ASR model download)
 
@@ -52,8 +52,8 @@ cd LiveTranslate
 
 Run `install.bat`. The installer will:
 
-1. Detect Python 3.10–3.12, offering to install it via winget if missing
-2. Create the virtual environment (a broken existing one is rebuilt automatically)
+1. Detect [uv](https://docs.astral.sh/uv/), installing it via winget if missing (falling back to the official install script)
+2. Create the virtual environment from uv's own Python 3.12 — never the system Python (a broken or wrong-version venv is rebuilt automatically)
 3. Detect the NVIDIA GPU and its compute capability, choosing CUDA 12.6 or 12.8 automatically, with a CPU-only option before installing
 4. Install PyTorch and the remaining dependencies
 

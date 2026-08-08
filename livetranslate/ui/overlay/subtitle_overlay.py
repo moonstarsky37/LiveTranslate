@@ -43,6 +43,7 @@ class SubtitleOverlay(QWidget):
     update_monitor_signal = pyqtSignal(float, float, object)
     update_stats_signal = pyqtSignal(int, int, int, int, float)
     update_asr_device_signal = pyqtSignal(str)
+    update_asr_status_signal = pyqtSignal(str)
 
     settings_requested = pyqtSignal()
     target_language_changed = pyqtSignal(str)
@@ -78,6 +79,7 @@ class SubtitleOverlay(QWidget):
         self.update_monitor_signal.connect(self._on_update_monitor)
         self.update_stats_signal.connect(self._on_update_stats)
         self.update_asr_device_signal.connect(self._on_update_asr_device)
+        self.update_asr_status_signal.connect(self._on_update_asr_status)
 
     def _setup_ui(self):
         self.setWindowFlags(
@@ -282,6 +284,10 @@ class SubtitleOverlay(QWidget):
     def _on_update_asr_device(self, device: str):
         self._monitor.update_asr_device(device)
 
+    @pyqtSlot(str)
+    def _on_update_asr_status(self, status: str):
+        self._monitor.update_asr_status(status)
+
     @pyqtSlot(int, str, str, str, float)
     def _on_add_message(self, msg_id, timestamp, original, source_lang, asr_ms):
         msg = ChatMessage(msg_id, timestamp, original, source_lang, asr_ms)
@@ -410,6 +416,10 @@ class SubtitleOverlay(QWidget):
 
     def update_asr_device(self, device: str):
         self.update_asr_device_signal.emit(device)
+
+    def update_asr_status(self, status: str):
+        """status: "" (ready) | "loading" | "unavailable". Thread-safe."""
+        self.update_asr_status_signal.emit(status)
 
     def set_target_language(self, lang: str):
         self._handle.set_target_language(lang)

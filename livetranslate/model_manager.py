@@ -334,7 +334,39 @@ def apply_cache_env():
     # (seen in the field at 86% of a SenseVoice fetch); the classic HTTP path
     # is slower but reliable. Users can re-enable Xet by setting the var to 0.
     os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+    # huggingface_hub warns "You are sending unauthenticated requests to the HF
+    # Hub" on every anonymous download, twice (its own stderr handler plus ours).
+    # Setting the logger level cannot hold it: the library reconfigures its root
+    # logger when it is first imported, which happens long after setup_logging.
+    # This env var is read during that reconfiguration, so it survives.
+    os.environ.setdefault("HF_HUB_VERBOSITY", "error")
     log.info(f"Cache env set: {resolved}")
+
+
+# True once apply_hf_token() has written the env vars itself. Guards the clear
+# path so emptying the GUI field never deletes a token the user exported in
+# their own shell/system environment.
+_HF_TOKEN_FROM_SETTINGS = False
+
+
+def apply_hf_token(token: str | None):
+    """Publish the user's HuggingFace token to the env huggingface_hub reads.
+
+    Anonymous downloads are rate-limited, which shows up as mid-download failures
+    on slow links. The ASR worker is spawned after this runs and inherits the
+    environment, so the token reaches it without being passed through the pipe."""
+    global _HF_TOKEN_FROM_SETTINGS
+    token = (token or "").strip()
+    if token:
+        os.environ["HF_TOKEN"] = token
+        os.environ["HUGGING_FACE_HUB_TOKEN"] = token
+        _HF_TOKEN_FROM_SETTINGS = True
+        log.info(f"HuggingFace token applied ({len(token)} chars)")
+    elif _HF_TOKEN_FROM_SETTINGS:
+        os.environ.pop("HF_TOKEN", None)
+        os.environ.pop("HUGGING_FACE_HUB_TOKEN", None)
+        _HF_TOKEN_FROM_SETTINGS = False
+        log.info("HuggingFace token cleared")
 
 
 def _has_silero_pkg() -> bool:

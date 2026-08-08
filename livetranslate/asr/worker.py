@@ -106,6 +106,27 @@ def _load_engine(config: dict):
     return engine
 
 
+def _warmup(engine):
+    """Run one throwaway inference before reporting ready.
+
+    The first real transcribe otherwise pays 5-6s of lazy init (CUDA context,
+    kernel autotuning, cuDNN/CTranslate2 workspace allocation) — right when the
+    user has just started talking. Doing it here moves that cost inside the
+    loading dialog. Failures are non-fatal: a worker that cannot warm up can
+    still serve requests.
+    """
+    import time
+
+    audio = np.zeros(16000, dtype=np.float32)
+    started = time.perf_counter()
+    try:
+        engine.transcribe(audio)
+    except Exception as exc:
+        log.warning(f"ASR warm-up failed (non-fatal): {exc}")
+        return
+    log.info(f"ASR warm-up done in {(time.perf_counter() - started) * 1000:.0f}ms")
+
+
 def _transcribe(engine, payload: dict):
     audio = payload.get("audio")
     if not isinstance(audio, np.ndarray):
@@ -144,6 +165,7 @@ def worker_main(conn, config: dict):
             f"(pid config={config.get('display_name', '')})"
         )
         engine = _load_engine(config)
+        _warmup(engine)
         conn.send(
             _ok_response(
                 None,

@@ -81,6 +81,14 @@ class ASRSupervisor(EngineSwitchMixin):
         self._mem_warned = False
         self._mem_warning_callback = None
 
+    def _set_asr_status(self, status: str):
+        """Publish the worker lifecycle state to the overlay ("" | loading | unavailable).
+
+        Loading a model takes tens of seconds and the pipeline drops every segment
+        meanwhile; without this the overlay just looks frozen."""
+        if self._app._overlay:
+            self._app._overlay.update_asr_status(status)
+
     def _mark_asr_unavailable(self, reason: str, client=None):
         with self._asr_lock:
             current = client or self._asr
@@ -106,6 +114,7 @@ class ASRSupervisor(EngineSwitchMixin):
         log.warning(f"ASR worker unavailable: {reason}")
         if self._app._overlay:
             self._app._overlay.update_asr_device("ASR unavailable")
+        self._set_asr_status("unavailable")
 
     def _shutdown_asr_worker(self):
         with self._asr_lock:
@@ -278,10 +287,12 @@ class ASRSupervisor(EngineSwitchMixin):
         """Load a worker from a saved state and activate it only if no newer engine
         switch happened in the meantime (generation guard). Runs on the ASR thread;
         the load is intentionally done outside _asr_lock. Returns True on activation."""
+        self._set_asr_status("loading")
         try:
             client = self._load_engine_client(state["config"])
         except Exception as e:
             log.error(f"ASR worker (re)start failed: {e}", exc_info=True)
+            self._set_asr_status("unavailable")
             return False
         stale = None
         with self._asr_lock:
@@ -312,6 +323,7 @@ class ASRSupervisor(EngineSwitchMixin):
             self._app._overlay.update_asr_device(
                 f"{name} [{state.get('device_label', state['device'])}]"
             )
+        self._set_asr_status("")
         return True
 
     def _recover_asr_worker(self, dead_client, reason: str):
@@ -353,6 +365,7 @@ class ASRSupervisor(EngineSwitchMixin):
             )
             if self._app._overlay:
                 self._app._overlay.update_asr_device("ASR unavailable")
+            self._set_asr_status("unavailable")
             return
         log.warning(
             f"ASR worker died ({reason}); auto-restart attempt "

@@ -228,6 +228,7 @@ class EngineSwitchMixin:
             self._asr_worker_baseline_mb = None
             self._asr_generation += 1
 
+        self._set_asr_status("loading")
         dlg = _ModelLoadDialog(
             t("loading_model").format(name=display_name), parent=parent
         )
@@ -302,6 +303,7 @@ class EngineSwitchMixin:
                 self._app._overlay.update_asr_device(
                     f"{display_name} [{target_state['device_label']}]"
                 )
+            self._set_asr_status("")
             log.info(f"ASR worker ready: {engine_type} on {device}")
             return
 
@@ -312,6 +314,7 @@ class EngineSwitchMixin:
                 self._app._overlay.update_asr_device(
                     f"{restored_name} [{old_state.get('device_label', old_state['device'])}]"
                 )
+            self._set_asr_status("")
             QMessageBox.warning(
                 parent,
                 t("error_title"),
@@ -342,3 +345,4 @@ class EngineSwitchMixin:
 
         if self._app._overlay:
             self._app._overlay.update_asr_device("ASR unavailable")
+        self._set_asr_status("unavailable")

@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QMessageBox,
     QPushButton,
@@ -51,6 +52,20 @@ class CacheTabMixin:
         ts_open_btn.clicked.connect(self._open_transcripts_folder)
         ts_layout.addWidget(ts_open_btn)
         layout.addWidget(ts_group)
+
+        # HuggingFace token (optional): anonymous downloads are rate-limited and
+        # fail mid-transfer on slow links. Password echo so it stays off-screen
+        # during screen shares; never logged (filtered in _apply_settings).
+        hf_group = QGroupBox(t("group_hf_token"))
+        hf_layout = QHBoxLayout(hf_group)
+        self._hf_token_edit = QLineEdit(str(s.get("hf_token", "") or ""))
+        self._hf_token_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self._hf_token_edit.setPlaceholderText(t("hf_token_placeholder"))
+        self._hf_token_edit.setToolTip(t("hf_token_tooltip"))
+        self._hf_token_edit.editingFinished.connect(self._auto_save)
+        hf_layout.addWidget(QLabel(t("label_hf_token")))
+        hf_layout.addWidget(self._hf_token_edit, 1)
+        layout.addWidget(hf_group)
 
         top_row = QHBoxLayout()
         self._cache_total = QLabel("")

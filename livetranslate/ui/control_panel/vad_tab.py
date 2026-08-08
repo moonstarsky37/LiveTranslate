@@ -359,6 +359,29 @@ class VadTabMixin:
         timing_layout.addWidget(QLabel(t("label_interim_interval")), 5, 0)
         timing_layout.addWidget(self._interim_interval_spin, 5, 1)
 
+        # Speech density floor: segments with fewer voiced chunks than this are
+        # dropped as noise. Capped at 90% so the filter can never eat everything.
+        try:
+            density_pct = int(round(float(s.get("vad_min_density", 0.25)) * 100))
+        except (TypeError, ValueError):
+            density_pct = 25
+        density_pct = max(0, min(90, density_pct))
+        self._vad_density_slider = QSlider(Qt.Orientation.Horizontal)
+        self._vad_density_slider.setRange(0, 90)
+        self._vad_density_slider.setValue(density_pct)
+        self._vad_density_slider.setToolTip(t("vad_density_tooltip"))
+        self._vad_density_slider.valueChanged.connect(self._on_density_changed)
+        self._vad_density_slider.sliderReleased.connect(self._auto_save)
+        self._vad_density_label = QLabel(self._density_text(density_pct))
+        self._vad_density_label.setFont(QFont("Consolas", 11, QFont.Weight.Bold))
+        density_row = QHBoxLayout()
+        density_row.addWidget(self._vad_density_slider, 1)
+        density_row.addWidget(self._vad_density_label)
+        density_label = QLabel(t("label_vad_density"))
+        density_label.setToolTip(t("vad_density_tooltip"))
+        timing_layout.addWidget(density_label, 6, 0)
+        timing_layout.addLayout(density_row, 6, 1)
+
         layout.addWidget(timing_group)
 
         layout.addStretch()
@@ -506,6 +529,15 @@ class VadTabMixin:
         if not self._vad_threshold_slider.isSliderDown():
             self._auto_save()
 
+    def _density_text(self, value: int) -> str:
+        return t("vad_density_off") if value == 0 else f"{value}%"
+
+    def _on_density_changed(self, value):
+        self._current_settings["vad_min_density"] = round(value / 100.0, 2)
+        self._vad_density_label.setText(self._density_text(value))
+        if not self._vad_density_slider.isSliderDown():
+            self._auto_save()
+
     def _on_energy_changed(self, value):
         val = value / 1000.0
         self._current_settings["energy_threshold"] = val
@@ -522,6 +554,10 @@ class VadTabMixin:
         self._current_settings["silence_duration"] = round(self._silence_duration.value(), 2)
         self._current_settings["incremental_asr"] = self._incremental_asr_cb.isChecked()
         self._current_settings["interim_interval"] = round(self._interim_interval_spin.value(), 2)
+        if hasattr(self, "_vad_density_slider"):
+            self._current_settings["vad_min_density"] = round(
+                self._vad_density_slider.value() / 100.0, 2
+            )
 
     def _on_ui_lang_changed(self, index):
         lang = ("en", "zh-TW", "zh-CN")[index] if 0 <= index <= 2 else "zh-TW"
