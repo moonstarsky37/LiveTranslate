@@ -5,7 +5,7 @@
 - Fixed install.bat creating the virtual environment inside `scripts\`, where start.bat could not find it (affects source installs since v2026.08.07-tw.1)
 - The overlay monitor bar now shows ASR state: loading / unavailable is visible at a glance, so startup and engine switches no longer look like a freeze
 - The ASR worker runs one warm-up inference after loading a model: the first sentence after load no longer waits an extra 5-6s
-- Pausing now clears the VAD buffer, so resuming never replays speech captured before the pause
+- Pausing now hands the half-spoken sentence to ASR and then clears the VAD buffer, so resuming never replays speech captured before the pause and that half sentence is not silently lost (matching what closing the app already did)
 - Settings -> ASR gained a "min speech density" slider (0 disables it): heavily-paused sources (clipped video, slow speakers) are no longer discarded wholesale as noise
 - Settings -> Cache gained an optional HuggingFace token field: lifts the anonymous download rate limit, and is never written to the log
 - Fixed the duplicated "unauthenticated requests" warning during downloads (huggingface_hub 1.27 overrides the logger level when it loads, so the suppression now goes through an environment variable)
