@@ -13,7 +13,11 @@ from datetime import datetime
 # torch-before-PyQt6 import order at module level; import it first.
 from livetranslate.main import LiveTranslateApp
 
-from livetranslate.model_manager import DEFAULT_FUNASR_MODEL, get_missing_models
+from livetranslate.model_manager import (
+    DEFAULT_FUNASR_MODEL,
+    apply_hf_token,
+    get_missing_models,
+)
 
 from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox
 from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QFont, QFontDatabase
@@ -129,6 +133,8 @@ def main():
     # Migrations (funasr normalization + fork hub/zh rules) now live inside
     # SettingsStore.load(), which _load_saved_settings() delegates to.
     saved = _load_saved_settings()
+    # Before any download path runs (wizard, missing-model dialog, ASR worker).
+    apply_hf_token((saved or {}).get("hf_token"))
 
     # Log actual effective config
     _asr_eng = (saved or {}).get("asr_engine", config["asr"].get("asr_engine", "funasr"))

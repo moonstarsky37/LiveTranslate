@@ -48,6 +48,7 @@ class Settings:
     max_speech_duration: float = 8.0
     silence_mode: str = "auto"
     silence_duration: float = 0.8
+    vad_min_density: float = 0.25
     asr_language: str = "auto"
     target_language: str = "zh-TW"
     models: list[dict[str, Any]] = field(default_factory=list)
@@ -65,6 +66,7 @@ class Settings:
     interim_interval: float = 2.0
     auto_save_transcript: bool = True
     ui_lang: str = "zh-TW"
+    hf_token: str = ""
     cache_path: str | None = None
     style: dict[str, Any] = field(default_factory=dict)
     subtitle_mode: dict[str, Any] = field(default_factory=dict)

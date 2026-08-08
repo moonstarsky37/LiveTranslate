@@ -97,6 +97,9 @@ class MonitorBar(QWidget):
         self._ram_mb = 0.0
         self._gpu_text = "N/A"
         self._asr_device = ""
+        # "" (ready) | "loading" | "unavailable" — replaces the device readout so
+        # a startup/engine-switch load is visible instead of looking like a hang.
+        self._asr_status = ""
         self._asr_count = 0
         self._tl_count = 0
         self._prompt_tokens = 0
@@ -121,6 +124,10 @@ class MonitorBar(QWidget):
 
     def update_asr_device(self, device: str):
         self._asr_device = device
+        self._refresh_stats()
+
+    def update_asr_status(self, status: str):
+        self._asr_status = status or ""
         self._refresh_stats()
 
     def update_pipeline_stats(
@@ -154,8 +161,20 @@ class MonitorBar(QWidget):
     def _refresh_stats(self):
         total = self._prompt_tokens + self._completion_tokens
         tokens_str = f"{total / 1000:.1f}k" if total >= 1000 else str(total)
+        from livetranslate.i18n import t
+
         dev_str = ""
-        if self._asr_device:
+        if self._asr_status == "loading":
+            dev_str = (
+                f'<span style="color:#fa5;">{t("asr_status_loading")}</span> '
+                f'<span style="color:#555;">|</span> '
+            )
+        elif self._asr_status == "unavailable":
+            dev_str = (
+                f'<span style="color:#f66;">{t("asr_status_unavailable")}</span> '
+                f'<span style="color:#555;">|</span> '
+            )
+        elif self._asr_device:
             dev_color = "#4ec9b0" if "cuda" in self._asr_device.lower() else "#dcdcaa"
             dev_str = (
                 f'<span style="color:{dev_color};">{self._asr_device}</span> '

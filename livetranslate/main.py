@@ -134,6 +134,10 @@ class LiveTranslateApp:
 
     def _on_settings_changed(self, settings):
         self._vad.update_settings(settings)
+        if "hf_token" in settings:
+            from livetranslate.model_manager import apply_hf_token
+
+            apply_hf_token(settings["hf_token"])
         if "style" in settings and self._overlay:
             self._overlay.apply_style(settings["style"])
         if "asr_language" in settings:
@@ -434,6 +438,11 @@ class LiveTranslateApp:
         self._last_interim_samples = 0
         self._last_interim_check_time = 0.0
         self._interim_committed_tail = ""
+        # Drop whatever the VAD had accumulated: the capture thread stops feeding
+        # it while paused, so without this the buffer survives the pause and the
+        # first speech after resume gets prefixed with minutes-old audio.
+        with self._pipeline._vad_lock:
+            self._vad.reset()
         if self._overlay:
             self._overlay.update_monitor(0.0, 0.0)
         log.info("Pipeline paused")
