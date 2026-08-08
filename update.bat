@@ -1,6 +1,6 @@
 @echo off
 cd /d "%~dp0"
-set PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%PATH%
+set PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%USERPROFILE%\.local\bin;%PATH%
 
 echo ========================================
 echo   LiveTranslate Updater
@@ -50,24 +50,27 @@ if errorlevel 1 (
 )
 
 :: Check venv
-if not exist ".venv\Scripts\pip.exe" (
+if not exist ".venv\Scripts\python.exe" (
     echo.
     echo Virtual environment not found, running install.bat...
     call install.bat
     exit /b %errorlevel%
 )
 
-:: Update dependencies
+:: Update dependencies — uv when available (same tool install.bat uses), pip otherwise
 echo.
 echo Updating dependencies...
-.venv\Scripts\pip.exe install -r requirements.txt --quiet
+where uv >nul 2>&1
+if errorlevel 1 (
+    .venv\Scripts\python.exe -m pip install -r requirements.txt --quiet
+) else (
+    uv pip install --python .venv\Scripts\python.exe -r requirements.txt --quiet
+)
 if errorlevel 1 (
     echo [ERROR] Failed to update dependencies.
     pause
     exit /b 1
 )
-
-.venv\Scripts\pip.exe install pysbd --quiet
 
 echo.
 echo ========================================

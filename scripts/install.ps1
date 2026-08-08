@@ -1,9 +1,18 @@
-# LiveTranslate - One-click installer
-# Usage: Double-click install.bat (or run: powershell -ExecutionPolicy Bypass -File install.ps1)
+# LiveTranslate - One-click installer (git-clone workflow)
+# Usage: Double-click install.bat (or run: powershell -ExecutionPolicy Bypass -File scripts\install.ps1)
+#
+# Environment setup is delegated to uv, which downloads its own CPython 3.12.
+# No system Python is needed, and a system Python of the wrong version can no
+# longer poison the venv. This mirrors the portable release bootstrap written
+# by scripts/build_release.ps1 — keep the two in sync.
 
 $ErrorActionPreference = "Stop"
-$ProjectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+# This script lives in scripts/; the project root is one level up.
+$ProjectDir = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $ProjectDir
+
+# Hardlinks across volumes fail on some setups; copying is slower but reliable.
+$env:UV_LINK_MODE = "copy"
 
 function Write-Step { param($msg) Write-Host "`n[$((Get-Date).ToString('HH:mm:ss'))] $msg" -ForegroundColor Cyan }
 function Write-Ok   { param($msg) Write-Host "  OK: $msg" -ForegroundColor Green }
@@ -51,49 +60,31 @@ Write-Host "========================================" -ForegroundColor Magenta
 
 Enable-SystemProxy
 
-# ── Step 1: Find Python ──
-Write-Step "Detecting Python..."
+# ── Step 1: Find or install uv ──
+Write-Step "Detecting uv..."
 
-function Find-Python {
-    # 3.13+ rejected: no ctranslate2 cp313 wheels (#15), strict SSL breaks torch.hub (#20)
-    foreach ($v in @("3.12", "3.11", "3.10")) {
-        try {
-            $exe = & py "-$v" -c "import sys; print(sys.executable)" 2>&1
-            if ($LASTEXITCODE -eq 0 -and $exe -and (Test-Path $exe.Trim())) {
-                $exe = $exe.Trim()
-                $ver = & $exe --version 2>&1
-                Write-Ok "Found $ver ($exe)"
-                return $exe
-            }
-        } catch {}
-    }
-    # Fall back to plain commands, rejecting unsupported versions.
-    foreach ($cmd in @("python", "python3", "py")) {
-        try {
-            $ver = & $cmd --version 2>&1
-            if ($ver -match "Python (\d+)\.(\d+)") {
-                $major = [int]$Matches[1]
-                $minor = [int]$Matches[2]
-                if ($major -eq 3 -and $minor -ge 10 -and $minor -le 12) {
-                    Write-Ok "Found $ver ($cmd)"
-                    return $cmd
-                } elseif ($major -eq 3 -and $minor -ge 13) {
-                    Write-Warn "$ver is too new (faster-whisper/SSL require 3.10-3.12)"
-                } else {
-                    Write-Warn "$ver is too old (need 3.10-3.12)"
-                }
-            }
-        } catch {}
+function Find-Uv {
+    try {
+        $null = & uv --version 2>&1
+        if ($LASTEXITCODE -eq 0) { return "uv" }
+    } catch {}
+    # Freshly installed uv is not on this session's PATH yet; check the two
+    # locations winget and the official installer use.
+    $candidates = @(
+        (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\uv.exe"),
+        (Join-Path $env:USERPROFILE ".local\bin\uv.exe")
+    )
+    foreach ($c in $candidates) {
+        if ($c -and (Test-Path $c)) { return $c }
     }
     return $null
 }
 
-$PythonCmd = Find-Python
+$Uv = Find-Uv
 
-if (-not $PythonCmd) {
-    Write-Warn "No supported Python (3.10-3.12) found"
+if (-not $Uv) {
+    Write-Warn "uv not found — it manages Python and the dependencies for this project"
 
-    # Try to install via winget
     $hasWinget = $false
     try {
         $null = & winget --version 2>&1
@@ -101,95 +92,85 @@ if (-not $PythonCmd) {
     } catch {}
 
     if ($hasWinget) {
-        Write-Host ""
-        Write-Host "  Python can be installed automatically via winget." -ForegroundColor White
-        $answer = Read-Host "  Install Python 3.12 now? [Y/n]"
-        if ($answer -eq "" -or $answer -match "^[Yy]") {
-            Write-Step "Installing Python 3.12 via winget..."
-            & winget install Python.Python.3.12 --accept-package-agreements --accept-source-agreements
-            if ($LASTEXITCODE -ne 0) {
-                Write-Err "winget install failed"
-                Read-Host "Press Enter to exit"
-                exit 1
-            }
+        Write-Step "Installing uv via winget..."
+        & winget install astral-sh.uv --accept-package-agreements --accept-source-agreements
+        # Refresh PATH so the new uv is visible without reopening the shell
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        $Uv = Find-Uv
+    }
 
-            # Refresh PATH to pick up newly installed Python
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-
-            $PythonCmd = Find-Python
-            if (-not $PythonCmd) {
-                Write-Err "Python installed but not found in PATH. Please close this window, reopen, and run install.bat again."
-                Read-Host "Press Enter to exit"
-                exit 1
-            }
-        } else {
-            Write-Err "Python 3.10-3.12 is required. Please install from https://www.python.org/downloads/"
-            Read-Host "Press Enter to exit"
-            exit 1
+    if (-not $Uv) {
+        Write-Warn "Falling back to the official installer: https://astral.sh/uv/install.ps1"
+        try {
+            Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
+        } catch {
+            Write-Err "uv installation failed: $_"
         }
-    } else {
-        Write-Err "Python 3.10-3.12 not found and winget is not available."
-        Write-Host "  Please install Python from https://www.python.org/downloads/" -ForegroundColor Yellow
-        Write-Host "  Make sure to check 'Add Python to PATH' during installation." -ForegroundColor Yellow
+        $env:Path = "$env:USERPROFILE\.local\bin;$env:Path"
+        $Uv = Find-Uv
+    }
+
+    if (-not $Uv) {
+        Write-Err "Could not install uv automatically."
+        Write-Host "  Install it manually (https://docs.astral.sh/uv/getting-started/installation/)" -ForegroundColor Yellow
+        Write-Host "  then run install.bat again." -ForegroundColor Yellow
         Read-Host "Press Enter to exit"
         exit 1
     }
 }
+Write-Ok ((& $Uv --version) -join " ")
 
 # ── Step 2: Create venv ──
-Write-Step "Creating virtual environment..."
+Write-Step "Creating virtual environment (Python 3.12)..."
 
-# Validate existing venv: even if python.exe is present, the venv could be
-# half-built, created with a different Python, or corrupted (see issue #18).
-# If it's broken, recreate it; otherwise reuse it.
+# Validate an existing venv: it may be half-built, built by a Python we no
+# longer support (3.13+ has no ctranslate2 wheels), or plain corrupted (#18).
 function Test-VenvHealthy {
     param([string]$VenvPythonExe)
     if (-not (Test-Path $VenvPythonExe)) { return $false }
     try {
         $ver = & $VenvPythonExe --version 2>&1
         if ($LASTEXITCODE -ne 0) { return $false }
-        if ($ver -notmatch "Python \d+\.\d+") { return $false }
+        if ($ver -notmatch "Python (\d+)\.(\d+)") { return $false }
+        $major = [int]$Matches[1]
+        $minor = [int]$Matches[2]
+        # 3.13+ rejected: no ctranslate2 cp313 wheels (#15), strict SSL breaks torch.hub (#20)
+        if ($major -ne 3 -or $minor -lt 10 -or $minor -gt 12) {
+            Write-Warn "Existing venv is $ver (need 3.10-3.12)"
+            return $false
+        }
         return $true
     } catch {
         return $false
     }
 }
 
-$VenvPython = ".venv\Scripts\python.exe"
+$Python = ".venv\Scripts\python.exe"
+$needVenv = $true
 if (Test-Path ".venv") {
-    if (Test-VenvHealthy $VenvPython) {
+    if (Test-VenvHealthy $Python) {
         Write-Ok "Existing venv is healthy, reusing"
+        $needVenv = $false
     } else {
-        Write-Warn "Existing venv is broken or incomplete, recreating..."
+        Write-Warn "Existing venv is unusable, recreating..."
         Remove-Item -Recurse -Force .venv -ErrorAction SilentlyContinue
-        & $PythonCmd -m venv .venv
-        if ($LASTEXITCODE -ne 0) {
-            Write-Err "Failed to create venv"
-            Read-Host "Press Enter to exit"
-            exit 1
-        }
-        Write-Ok "Created .venv"
     }
-} else {
-    & $PythonCmd -m venv .venv
+}
+
+if ($needVenv) {
+    # --managed-python forces uv's own CPython build instead of whatever the
+    # system has; --seed installs pip so update.bat keeps working.
+    & $Uv venv --python 3.12 --managed-python --seed .venv
     if ($LASTEXITCODE -ne 0) {
+        Write-Warn "Retrying without --managed-python (older uv)..."
+        & $Uv venv --python 3.12 --seed .venv
+    }
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $Python)) {
         Write-Err "Failed to create venv"
         Read-Host "Press Enter to exit"
         exit 1
     }
     Write-Ok "Created .venv"
-}
-
-$Pip = ".venv\Scripts\pip.exe"
-$Python = ".venv\Scripts\python.exe"
-
-# Upgrade pip first
-Write-Step "Upgrading pip..."
-& $Python -m pip install --upgrade pip --quiet
-if ($LASTEXITCODE -ne 0) {
-    Write-Warn "pip upgrade failed (non-critical, continuing with current pip)"
-} else {
-    Write-Ok "pip upgraded"
 }
 
 # ── Step 3: Detect GPU ──
@@ -201,18 +182,18 @@ try {
     $gpu = & nvidia-smi --query-gpu=name,driver_version --format=csv,noheader 2>$null
     if ($LASTEXITCODE -eq 0 -and $gpu) {
         $HasNvidia = $true
-        Write-Ok "NVIDIA GPU detected: $($gpu.Trim())"
+        Write-Ok "NVIDIA GPU detected: $(($gpu -split "`n")[0].Trim())"
 
         # Detect compute capability to choose CUDA version
         # Blackwell (sm_120, compute_cap >= 12.0) requires cu128
         $cc = & nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>$null
         if ($LASTEXITCODE -eq 0 -and $cc) {
-            $ccVal = [double]($cc.Trim())
+            $ccVal = [double](($cc -split "`n")[0].Trim())
             if ($ccVal -ge 12.0) {
                 $CudaVer = "cu128"
-                Write-Ok "Blackwell+ architecture (sm_$($cc.Trim() -replace '\.','')) detected, using CUDA 12.8"
+                Write-Ok "Blackwell+ architecture (compute $ccVal) detected, using CUDA 12.8"
             } else {
-                Write-Ok "Compute capability $($cc.Trim()), using CUDA 12.6"
+                Write-Ok "Compute capability $ccVal, using CUDA 12.6"
             }
         }
     }
@@ -237,16 +218,17 @@ if ($HasNvidia) {
     if ($choice -eq "2") { $HasNvidia = $true }
 }
 
-# ── Step 4: Install PyTorch ──
-Write-Step "Installing PyTorch (this may take a few minutes)..."
-
-if ($HasNvidia) {
-    Write-Host "  Using index: $CudaVer" -ForegroundColor Gray
-    & $Pip install torch torchaudio --index-url https://download.pytorch.org/whl/$CudaVer
+$TorchIndex = if ($HasNvidia) {
+    "https://download.pytorch.org/whl/$CudaVer"
 } else {
-    & $Pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+    "https://download.pytorch.org/whl/cpu"
 }
 
+# ── Step 4: Install PyTorch ──
+Write-Step "Installing PyTorch (this may take a few minutes)..."
+Write-Host "  Using index: $TorchIndex" -ForegroundColor Gray
+
+& $Uv pip install --python $Python torch torchaudio --index-url $TorchIndex
 if ($LASTEXITCODE -ne 0) {
     Write-Err "PyTorch installation failed"
     Read-Host "Press Enter to exit"
@@ -257,23 +239,13 @@ Write-Ok "PyTorch installed"
 # ── Step 5: Install dependencies ──
 Write-Step "Installing dependencies from requirements.txt..."
 
-& $Pip install -r requirements.txt
+& $Uv pip install --python $Python -r requirements.txt
 if ($LASTEXITCODE -ne 0) {
     Write-Err "Failed to install dependencies"
     Read-Host "Press Enter to exit"
     exit 1
 }
 Write-Ok "Dependencies installed"
-
-# ── Step 6: Install pysbd for incremental ASR ──
-Write-Step "Installing pysbd..."
-
-& $Pip install pysbd
-if ($LASTEXITCODE -ne 0) {
-    Write-Warn "pysbd installation failed (incremental ASR may not work)"
-} else {
-    Write-Ok "pysbd installed"
-}
 
 # ── Done ──
 Write-Host ""

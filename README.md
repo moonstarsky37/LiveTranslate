@@ -33,7 +33,7 @@ LiveTranslate 是 Windows 上的即時語音翻譯工具：擷取系統正在播
 ## 系統需求
 
 - Windows 10 / 11
-- Python 3.10–3.12（3.13 因相依套件尚未支援而排除；使用免安裝版則無此需求）
+- 不需預先安裝 Python：`install.bat` 會經 uv 自動取得 Python 3.12（3.13 因相依套件尚未支援而排除）
 - 建議配備 NVIDIA 顯示卡與 CUDA 12.6（RTX 50 系列等 Blackwell 架構需 CUDA 12.8）；純 CPU 亦可執行，惟辨識速度較慢
 - 網路需能連上翻譯 API 與 HuggingFace（翻譯採用本地模型時，僅初次下載 ASR 模型需要網路）
 
@@ -54,8 +54,8 @@ cd LiveTranslate
 
 執行 `install.bat`，安裝腳本會依序完成：
 
-1. 偵測 Python 3.10–3.12，未安裝時可經 winget 自動安裝
-2. 建立虛擬環境（既有環境損壞時會自動重建）
+1. 偵測 [uv](https://docs.astral.sh/uv/)，未安裝時經 winget 自動安裝（無 winget 則改用官方安裝腳本）
+2. 以 uv 專屬的 Python 3.12 建立虛擬環境（既有環境損壞或版本不符時會自動重建），完全不使用系統 Python
 3. 偵測 NVIDIA 顯示卡與運算能力，自動判斷 CUDA 12.6 或 12.8，安裝前可改選 CPU 版
 4. 安裝 PyTorch 與其餘相依套件
 
