@@ -267,6 +267,10 @@ class SubtitleOverlay(QWidget):
     def set_mode(self, mode: str):
         self._handle.set_mode(mode)
 
+    def set_template(self, template: str):
+        """Switch the header layout (classic / compact / minimal)."""
+        self._handle.set_template(template)
+
     def set_subtitle_checked(self, checked: bool):
         self._handle.set_subtitle_checked(checked)
 

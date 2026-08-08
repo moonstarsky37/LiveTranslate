@@ -7,12 +7,28 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QPushButton,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 from livetranslate.i18n import LANGUAGES, t
+
+# Header layouts the user can pick between (setting: overlay_template).
+#   classic  every control on the bar — the original layout
+#   compact  bigger buttons, the four window toggles move into the More menu
+#   minimal  one row: run/pause + settings + More; everything else in the menu
+OVERLAY_TEMPLATES = ("classic", "compact", "minimal")
+DEFAULT_OVERLAY_TEMPLATE = "classic"
+
+# (button height, header height) per template. Classic keeps the original 20px
+# buttons; the other two lift them to at least the 24px minimum target size.
+_TEMPLATE_METRICS = {
+    "classic": (20, 62),
+    "compact": (24, 52),
+    "minimal": (26, 32),
+}
 
 
 _BTN_CSS = """
@@ -105,6 +121,8 @@ class DragHandle(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._mode = "full"
+        self._template = DEFAULT_OVERLAY_TEMPLATE
+        self._buttons = []
         self.setFixedHeight(62)
         self.setStyleSheet("background: rgba(60, 60, 80, 200); border-radius: 4px;")
 
@@ -139,11 +157,12 @@ class DragHandle(QWidget):
             b.setStyleSheet(_BTN_CSS)
             if tip:
                 b.setToolTip(tip)
+            self._buttons.append(b)
             return b
 
-        hide_btn = _btn(t("hide"))
-        hide_btn.clicked.connect(self.hide_clicked.emit)
-        row1.addWidget(hide_btn)
+        self._hide_btn = _btn(t("hide"))
+        self._hide_btn.clicked.connect(self.hide_clicked.emit)
+        row1.addWidget(self._hide_btn)
 
         self._subtitle_btn = _btn(t("subtitle"))
         self._subtitle_btn.clicked.connect(self.subtitle_clicked.emit)
@@ -163,18 +182,34 @@ class DragHandle(QWidget):
         self._mode_btn.clicked.connect(self._toggle_mode)
         row1.addWidget(self._mode_btn)
 
-        settings_btn = _btn(t("settings"))
-        settings_btn.clicked.connect(self.settings_clicked.emit)
-        row1.addWidget(settings_btn)
+        # Model / language summary — replaces the combo row in the minimal
+        # template, where there is no second row to put them on.
+        self._summary_lbl = QLabel("")
+        self._summary_lbl.setFont(QFont("Consolas", 8))
+        self._summary_lbl.setStyleSheet("color: #8a8f9c; background: transparent;")
+        self._summary_lbl.setVisible(False)
+        row1.addWidget(self._summary_lbl)
 
-        quit_btn = _btn(t("quit"))
-        quit_btn.setStyleSheet(
+        self._settings_btn = _btn(t("settings"))
+        self._settings_btn.clicked.connect(self.settings_clicked.emit)
+        row1.addWidget(self._settings_btn)
+
+        # Overflow menu. Holds whatever the active template took off the bar, so
+        # the four window toggles stay one click away instead of moving into
+        # another window — they are things you reach for while watching.
+        self._more_btn = _btn("⋯", t("more_actions"))
+        self._more_btn.clicked.connect(self._show_overflow_menu)
+        self._more_btn.setVisible(False)
+        row1.addWidget(self._more_btn)
+
+        self._quit_btn = _btn(t("quit"))
+        self._quit_btn.setStyleSheet(
             _BTN_CSS.replace("rgba(255,255,255,20)", "rgba(200,60,60,40)").replace(
                 "rgba(255,255,255,40)", "rgba(200,60,60,80)"
             )
         )
-        quit_btn.clicked.connect(self.quit_clicked.emit)
-        row1.addWidget(quit_btn)
+        self._quit_btn.clicked.connect(self.quit_clicked.emit)
+        row1.addWidget(self._quit_btn)
 
         outer.addLayout(row1)
 
@@ -185,8 +220,10 @@ class DragHandle(QWidget):
         row2_outer.setContentsMargins(0, 0, 0, 0)
         row2_outer.setSpacing(2)
 
-        # Row 2a: checkboxes
-        row2a = QHBoxLayout()
+        # Row 2a: checkboxes (own widget so a template can hide just this row)
+        self._checks_widget = QWidget()
+        self._checks_widget.setStyleSheet("background: transparent;")
+        row2a = QHBoxLayout(self._checks_widget)
         row2a.setContentsMargins(0, 0, 0, 0)
         row2a.setSpacing(6)
 
@@ -222,10 +259,12 @@ class DragHandle(QWidget):
         row2a.addWidget(self._taskbar_check)
 
         row2a.addStretch()
-        row2_outer.addLayout(row2a)
+        row2_outer.addWidget(self._checks_widget)
 
         # Row 2b: model + source language + target language combos (stretch to fill)
-        row2b = QHBoxLayout()
+        self._combos_widget = QWidget()
+        self._combos_widget.setStyleSheet("background: transparent;")
+        row2b = QHBoxLayout(self._combos_widget)
         row2b.setContentsMargins(0, 0, 0, 0)
         row2b.setSpacing(4)
 
@@ -293,9 +332,10 @@ class DragHandle(QWidget):
         )
         row2b.addWidget(self._target_lang, 2)
 
-        row2_outer.addLayout(row2b)
+        row2_outer.addWidget(self._combos_widget)
 
         outer.addWidget(self._row2_widget)
+        self._apply_template()
 
     def _on_start_stop(self):
         if self._running:
@@ -313,6 +353,7 @@ class DragHandle(QWidget):
             self._target_lang.blockSignals(True)
             self._target_lang.setCurrentIndex(idx)
             self._target_lang.blockSignals(False)
+            self._update_summary()
 
     def set_source_language(self, lang: str):
         idx = self._source_lang.findData(lang)
@@ -320,6 +361,7 @@ class DragHandle(QWidget):
             self._source_lang.blockSignals(True)
             self._source_lang.setCurrentIndex(idx)
             self._source_lang.blockSignals(False)
+            self._update_summary()
 
     def set_models(self, models: list, active_index: int = 0):
         self._model_combo.blockSignals(True)
@@ -329,6 +371,7 @@ class DragHandle(QWidget):
         if 0 <= active_index < self._model_combo.count():
             self._model_combo.setCurrentIndex(active_index)
         self._model_combo.blockSignals(False)
+        self._update_summary()
 
     @property
     def auto_scroll(self) -> bool:
@@ -343,6 +386,97 @@ class DragHandle(QWidget):
             self._start_stop_btn.setText(t("paused"))
             self._start_stop_btn.setStyleSheet(self._PAUSED_CSS)
 
+    # ── Header templates ────────────────────────────────────────────
+
+    def set_template(self, template: str):
+        """Switch header layout. See OVERLAY_TEMPLATES for what each one shows."""
+        if template not in OVERLAY_TEMPLATES:
+            template = DEFAULT_OVERLAY_TEMPLATE
+        if template == self._template:
+            return
+        self._template = template
+        self._apply_template()
+
+    def _apply_template(self):
+        btn_h, header_h = _TEMPLATE_METRICS[self._template]
+        for b in self._buttons:
+            b.setFixedHeight(btn_h)
+        for combo in (self._model_combo, self._source_lang, self._target_lang):
+            combo.setFixedHeight(max(18, btn_h - 4))
+
+        classic = self._template == "classic"
+        minimal = self._template == "minimal"
+
+        # Only classic keeps the four window toggles on the bar; the others move
+        # them into the overflow menu, which is why that button appears there.
+        self._checks_widget.setVisible(classic)
+        self._combos_widget.setVisible(not minimal)
+        self._summary_lbl.setVisible(minimal)
+        self._more_btn.setVisible(not classic)
+        for b in (
+            self._hide_btn,
+            self._subtitle_btn,
+            self._clear_btn,
+            self._mode_btn,
+            self._quit_btn,
+        ):
+            b.setVisible(not minimal)
+
+        self._row2_widget.setVisible(not minimal)
+        self._update_summary()
+        # A template change re-derives the height, but compact mode wins while it
+        # is on: the user collapsed the bar deliberately.
+        self.setFixedHeight(24 if self._mode == "compact" else header_h)
+
+    def _update_summary(self):
+        # Gate on the template, not isVisible(): during construction the overlay
+        # has not been shown yet, so isVisible() is still False everywhere.
+        if self._template != "minimal":
+            return
+        model = self._model_combo.currentText() or "-"
+        src = self._source_lang.currentData() or "auto"
+        tgt = self._target_lang.currentData() or "-"
+        self._summary_lbl.setText(f"  {model} · {src} → {tgt}  ")
+
+    def _show_overflow_menu(self):
+        """Everything the active template took off the bar, rebuilt on each open
+        so the toggle states never drift from the checkboxes that own them."""
+        menu = QMenu(self)
+        menu.setStyleSheet(
+            "QMenu { background: #2a2a3a; color: #ccc; border: 1px solid #444; }"
+            "QMenu::item:selected { background: #444; }"
+        )
+
+        if self._template == "minimal":
+            for label, signal in (
+                (t("subtitle"), self.subtitle_clicked),
+                (t("clear"), self.clear_clicked),
+                (t("hide"), self.hide_clicked),
+            ):
+                menu.addAction(label, signal.emit)
+            menu.addAction(
+                t("mode_compact") if self._mode == "compact" else t("mode_full"),
+                self._toggle_mode,
+            )
+            menu.addSeparator()
+
+        for check in (
+            self._ct_check,
+            self._topmost_check,
+            self._auto_scroll,
+            self._taskbar_check,
+        ):
+            action = menu.addAction(check.text())
+            action.setCheckable(True)
+            action.setChecked(check.isChecked())
+            action.toggled.connect(check.setChecked)
+
+        if self._template == "minimal":
+            menu.addSeparator()
+            menu.addAction(t("quit"), self.quit_clicked.emit)
+
+        menu.exec(self._more_btn.mapToGlobal(self._more_btn.rect().bottomLeft()))
+
     def _toggle_mode(self):
         new_mode = "compact" if self._mode == "full" else "full"
         self._apply_mode(new_mode)
@@ -351,11 +485,12 @@ class DragHandle(QWidget):
     def _apply_mode(self, mode: str):
         self._mode = mode
         compact = mode == "compact"
-        self._row2_widget.setVisible(not compact)
-        self._clear_btn.setVisible(not compact)
-        self._subtitle_btn.setVisible(not compact)
+        _, header_h = _TEMPLATE_METRICS[self._template]
+        self._row2_widget.setVisible(not compact and self._template != "minimal")
+        self._clear_btn.setVisible(not compact and self._template != "minimal")
+        self._subtitle_btn.setVisible(not compact and self._template != "minimal")
         self._mode_btn.setText(t("mode_compact") if compact else t("mode_full"))
-        self.setFixedHeight(24 if compact else 62)
+        self.setFixedHeight(24 if compact else header_h)
 
     def set_mode(self, mode: str):
         if mode != self._mode:

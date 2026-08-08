@@ -1,6 +1,9 @@
 # Changelog
 
 ## 2026-08-08 (v2026.08.08-tw.4)
+- The overlay's run/pause button now says what clicking it does: "Pause" while running, "Start" while paused. It used to show the current state, which read as the exact opposite under the usual "button label = action" convention
+- Settings -> Style gained an overlay layout picker: Classic (unchanged), Compact (bigger buttons, the four window toggles move into a "..." menu), Minimal (only run/pause and settings on the bar, header 62px -> 32px)
+- Fixed the control panel opening *behind* the overlay when you press Settings: the panel is now top-most as well and takes focus, and pressing Settings while it is open but unfocused brings it forward instead of hiding it (previously nothing appeared to happen)
 - Settings -> Cache now lists every cached directory instead of only the ones it has a name for: unknown models, aborted half-downloads and leftover metadata stubs all show up, and "delete all" really empties the cache (those entries used to be invisible, so a "cleared" cache could still be holding gigabytes)
 
 ## 2026-08-08 (v2026.08.08-tw.3)
