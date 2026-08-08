@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-08-08 (v2026.08.08-tw.5)
+- New SenseVoice ONNX engine (Settings -> ASR -> Engine): the same model as an int8 ONNX export, running on CPU with no GPU needed. ASR startup drops from 56s to about 2s, the model from 936MB to 239MB, and transcription speed matches the current GPU path - which frees the GPU for translation. The existing FunASR engine is untouched; you can switch between them at any time
+
 ## 2026-08-08 (v2026.08.08-tw.4)
 - The overlay's run/pause button now says what clicking it does: "Pause" while running, "Start" while paused. It used to show the current state, which read as the exact opposite under the usual "button label = action" convention
 - Settings -> Style gained an overlay layout picker: Classic (unchanged), Compact (bigger buttons, the four window toggles move into a "..." menu), Minimal (only run/pause and settings on the bar, header 62px -> 32px)

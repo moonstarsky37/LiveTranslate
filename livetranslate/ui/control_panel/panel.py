@@ -166,6 +166,7 @@ class ControlPanel(
             1: "funasr",
             2: "anime-whisper",
             3: "remote-whisper",
+            4: "sensevoice-onnx",
         }
         self._current_settings["asr_engine"] = engine_map.get(
             self._asr_engine.currentIndex(), "whisper"

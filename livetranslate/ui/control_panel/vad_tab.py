@@ -53,13 +53,18 @@ class VadTabMixin:
                 f"[{t('asr_fast')}] FunASR",
                 "Anime-Whisper (ja, anime/galgame)",
                 "Remote Whisper (remote GPU server)",
+                t("asr_sensevoice_onnx"),
             ]
         )
+        # Appended rather than inserted: the index<->engine mapping is stored in
+        # user_settings, so reordering would silently switch existing installs
+        # to a different engine.
         engine_map_idx = {
             "whisper": 0,
             "funasr": 1,
             "anime-whisper": 2,
             "remote-whisper": 3,
+            "sensevoice-onnx": 4,
         }
         engine_idx = engine_map_idx.get(s.get("asr_engine"), 0)
         self._asr_engine.setCurrentIndex(engine_idx)

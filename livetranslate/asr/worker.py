@@ -68,6 +68,27 @@ def _load_engine(config: dict):
 
     parsed_device, device_index = _parse_device(device)
 
+    if engine_type == "sensevoice-onnx":
+        # Deliberately first and self-contained: this branch must not reach any
+        # torch-importing module, that being the whole point of the ONNX path.
+        from livetranslate.model_manager import sensevoice_onnx_paths
+        from livetranslate.asr.sensevoice_onnx import SenseVoiceONNXEngine
+
+        paths = sensevoice_onnx_paths()
+        if paths is None:
+            raise FileNotFoundError(
+                "SenseVoice ONNX model not found in the cache; "
+                "download it from Settings before selecting this engine."
+            )
+        model_path, tokens_path = paths
+        engine = SenseVoiceONNXEngine(
+            model_path=model_path,
+            tokens_path=tokens_path,
+            language=language,
+            num_threads=int(config.get("onnx_num_threads") or 4),
+        )
+        return engine
+
     if engine_type == "funasr":
         from livetranslate.asr.funasr import FunASREngine
 
