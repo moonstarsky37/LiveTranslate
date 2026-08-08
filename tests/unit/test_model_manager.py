@@ -409,7 +409,7 @@ def test_models_dir_is_under_the_app_dir():
 
 
 def _hub(tmp_path, monkeypatch):
-    monkeypatch.setattr(mm, "MODELS_DIR", tmp_path)
+    monkeypatch.setattr(mm.cache, "MODELS_DIR", tmp_path)
     hub = tmp_path / "huggingface" / "hub"
     hub.mkdir(parents=True)
     return hub

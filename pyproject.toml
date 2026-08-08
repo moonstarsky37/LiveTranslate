@@ -31,7 +31,6 @@ check_untyped_defs = false
 module = [
     "main",
     "livetranslate.main",
-    "livetranslate.model_manager",
     "livetranslate.benchmark",
     "livetranslate.core.*",
     # moved legacy monolith code (Phase 3); un-baseline when annotated

@@ -118,7 +118,7 @@ def test_only_the_two_needed_files_are_declared():
 
 
 def _snapshot(tmp_path, monkeypatch):
-    monkeypatch.setattr(mm, "MODELS_DIR", tmp_path)
+    monkeypatch.setattr(mm.cache, "MODELS_DIR", tmp_path)
     org, name = mm.ASR_MODEL_IDS["sensevoice-onnx"].split("/")
     snap = (
         tmp_path / "huggingface" / "hub" / f"models--{org}--{name}" / "snapshots" / "abc"
@@ -128,7 +128,7 @@ def _snapshot(tmp_path, monkeypatch):
 
 
 def test_paths_are_none_when_nothing_is_cached(tmp_path, monkeypatch):
-    monkeypatch.setattr(mm, "MODELS_DIR", tmp_path)
+    monkeypatch.setattr(mm.cache, "MODELS_DIR", tmp_path)
     assert mm.sensevoice_onnx_paths() is None
     assert mm.is_asr_cached("sensevoice-onnx") is False
 
@@ -159,7 +159,7 @@ def test_both_files_present_reports_cached_with_paths(tmp_path, monkeypatch):
 
 
 def test_missing_models_reports_the_engine_with_its_size(tmp_path, monkeypatch):
-    monkeypatch.setattr(mm, "MODELS_DIR", tmp_path)
+    monkeypatch.setattr(mm.cache, "MODELS_DIR", tmp_path)
     monkeypatch.setattr(mm, "is_silero_cached", lambda: True)
     missing = mm.get_missing_models("sensevoice-onnx", None, "hf")
     assert [m["type"] for m in missing] == ["sensevoice-onnx"]
