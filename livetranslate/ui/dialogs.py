@@ -195,6 +195,11 @@ class SetupWizardDialog(QDialog):
         engine_layout.addWidget(engine_hint)
         layout.addWidget(engine_group)
 
+        # Collect the leftover height here instead of letting the layout inflate
+        # the group boxes: without it each box stretches to fill the dialog's
+        # minimum height and shows a large void under two rows of content.
+        layout.addStretch()
+
         self._download_btn = QPushButton(t("btn_start_download"))
         self._download_btn.clicked.connect(self._start_download)
         layout.addWidget(self._download_btn)
@@ -206,7 +211,10 @@ class SetupWizardDialog(QDialog):
             "background: #1e1e2e; color: #cdd6f4; border: 1px solid #444;"
         )
         self._log_view.hide()
-        layout.addWidget(self._log_view)
+        # Stretch 3 against the spacer's 1: while the log is hidden the spacer
+        # holds the leftover height, and once the download starts the log takes
+        # most of it back instead of staying at its size hint.
+        layout.addWidget(self._log_view, 3)
 
         self._error = None
         self._log_signal.connect(self._append_log)
