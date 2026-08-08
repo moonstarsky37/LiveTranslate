@@ -45,10 +45,24 @@ def qapp():
 
 @pytest.fixture
 def wizard(qapp):
+    """_start_download() installs a root logging handler and swaps sys.stderr,
+    both bound to this dialog's Qt signals; production removes them in
+    _check_done(), which the stubbed-thread tests never reach. Undo it here, or
+    a later test logging anything writes into a deleted C++ object and takes the
+    whole process down with an access violation."""
+    import logging
+    import sys as _sys
+
     store = _FakeStore()
     dlg = dialogs.SetupWizardDialog(store=store)
     dlg._store = store
-    return dlg
+    stderr_before = _sys.stderr
+    try:
+        yield dlg
+    finally:
+        logging.getLogger().removeHandler(dlg._log_handler)
+        _sys.stderr = stderr_before
+        dlg.deleteLater()
 
 
 def test_the_cpu_engine_is_preselected(wizard):
