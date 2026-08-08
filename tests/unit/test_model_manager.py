@@ -401,3 +401,56 @@ def test_neutralize_funasr_requirements_renames_the_file(tmp_path):
 
 def test_models_dir_is_under_the_app_dir():
     assert mm.MODELS_DIR == mm.APP_DIR / "models"
+
+
+# --------------------------------------------------------------------------
+# get_cache_entries (tmp_path only — never touches the real ./models)
+# --------------------------------------------------------------------------
+
+
+def _hub(tmp_path, monkeypatch):
+    monkeypatch.setattr(mm, "MODELS_DIR", tmp_path)
+    hub = tmp_path / "huggingface" / "hub"
+    hub.mkdir(parents=True)
+    return hub
+
+
+def test_get_cache_entries_names_known_repos(tmp_path, monkeypatch):
+    hub = _hub(tmp_path, monkeypatch)
+    (hub / "models--FunAudioLLM--SenseVoiceSmall").mkdir()
+    names = [name for name, _ in mm.get_cache_entries()]
+    assert names == ["SenseVoice Small (HuggingFace)"]
+
+
+def test_get_cache_entries_lists_unknown_repos_too(tmp_path, monkeypatch):
+    """A repo with no _CACHE_MODELS row must still be listed, or "delete all"
+    silently leaves it on disk (Qwen3-0.6B leaves a refs-only stub behind)."""
+    hub = _hub(tmp_path, monkeypatch)
+    (hub / "models--Qwen--Qwen3-0.6B" / "refs").mkdir(parents=True)
+    entries = mm.get_cache_entries()
+    assert [name for name, _ in entries] == ["Qwen/Qwen3-0.6B (HuggingFace)"]
+    assert entries[0][1] == hub / "models--Qwen--Qwen3-0.6B"
+
+
+def test_get_cache_entries_does_not_list_a_repo_twice(tmp_path, monkeypatch):
+    hub = _hub(tmp_path, monkeypatch)
+    (hub / "models--FunAudioLLM--SenseVoiceSmall").mkdir()
+    (hub / "models--Qwen--Qwen3-0.6B").mkdir()
+    paths = [p for _, p in mm.get_cache_entries()]
+    assert len(paths) == len(set(paths)) == 2
+
+
+def test_get_cache_entries_surfaces_an_incomplete_whisper_download(tmp_path, monkeypatch):
+    """The whisper loop skips a dir that is not fully cached; the sweep must
+    still show it, otherwise the aborted download is invisible disk usage."""
+    hub = _hub(tmp_path, monkeypatch)
+    (hub / "models--Systran--faster-whisper-medium" / "blobs").mkdir(parents=True)
+    names = [name for name, _ in mm.get_cache_entries()]
+    assert names == ["Systran/faster-whisper-medium (HuggingFace)"]
+
+
+def test_get_cache_entries_ignores_non_repo_cache_files(tmp_path, monkeypatch):
+    hub = _hub(tmp_path, monkeypatch)
+    (hub / "CACHEDIR.TAG").write_text("Signature", encoding="utf-8")
+    (hub / ".locks").mkdir()
+    assert mm.get_cache_entries() == []
