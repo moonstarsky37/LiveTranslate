@@ -159,11 +159,24 @@ def test_both_files_present_reports_cached_with_paths(tmp_path, monkeypatch):
 
 
 def test_missing_models_reports_the_engine_with_its_size(tmp_path, monkeypatch):
+    # Patch on mm.cache, not mm: get_missing_models reads its own module global,
+    # so patching the re-exported name is a no-op. It looks like it works on a
+    # machine that has silero-vad installed, because then the real function
+    # returns True anyway - CI, which does not, is where that lie shows up.
     monkeypatch.setattr(mm.cache, "MODELS_DIR", tmp_path)
-    monkeypatch.setattr(mm, "is_silero_cached", lambda: True)
+    monkeypatch.setattr(mm.cache, "is_silero_cached", lambda: True)
     missing = mm.get_missing_models("sensevoice-onnx", None, "hf")
     assert [m["type"] for m in missing] == ["sensevoice-onnx"]
     assert missing[0]["estimated_bytes"] == mm._MODEL_SIZE_BYTES["sensevoice-onnx"]
+
+
+def test_silero_patch_actually_reaches_get_missing_models(tmp_path, monkeypatch):
+    """Guards the test above: if the patch target drifts again, the previous
+    test would silently depend on whether silero-vad happens to be installed."""
+    monkeypatch.setattr(mm.cache, "MODELS_DIR", tmp_path)
+    monkeypatch.setattr(mm.cache, "is_silero_cached", lambda: False)
+    missing = mm.get_missing_models("sensevoice-onnx", None, "hf")
+    assert [m["type"] for m in missing] == ["silero-vad", "sensevoice-onnx"]
 
 
 def test_cache_tab_lists_the_onnx_model(tmp_path, monkeypatch):
