@@ -1,4 +1,4 @@
-"""Characterization tests for livetranslate.core.segmentation (pure text ops)."""
+"""Characterization tests for sublume.core.segmentation (pure text ops)."""
 
 import sys
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from livetranslate.core.segmentation import (  # noqa: E402
+from sublume.core.segmentation import (  # noqa: E402
     is_short_utterance,
     split_sentences,
     strip_committed_overlap,

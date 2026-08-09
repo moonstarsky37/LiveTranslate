@@ -1,4 +1,4 @@
-# LiveTranslate - Portable release builder
+# Sublume - Portable release builder
 # Produces a self-contained zip that runs without a system Python install.
 # First launch uses a bundled uv to fetch Python 3.12 + GPU-aware dependencies.
 
@@ -14,12 +14,12 @@ function Write-Ok   { param($msg) Write-Host "  OK: $msg" -ForegroundColor Green
 
 $UvUrl  = "https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip"
 $OutDir = Join-Path $ProjectDir "release"
-$Stage  = Join-Path $OutDir "LiveTranslate"
+$Stage  = Join-Path $OutDir "Sublume"
 
 $Sha   = (& git rev-parse --short HEAD).Trim()
 $Stamp = Get-Date -Format "yyyyMMdd"
 $Tag   = if ($Version) { $Version } else { "$Stamp-$Sha" }
-$ZipPath = Join-Path $OutDir "LiveTranslate-portable-$Tag.zip"
+$ZipPath = Join-Path $OutDir "Sublume-portable-$Tag.zip"
 
 # Files only needed for the git-clone workflow; the portable zip ships its own launcher.
 $DropList = @("install.bat", "update.bat", "start.bat",
@@ -70,11 +70,11 @@ if not exist ".venv\Scripts\python.exe" (
         exit /b 1
     )
 )
-echo Starting LiveTranslate...
+echo Starting Sublume...
 .venv\Scripts\python.exe main.py
 if errorlevel 1 (
     echo.
-    echo [ERROR] LiveTranslate exited with an error.
+    echo [ERROR] Sublume exited with an error.
     pause
 )
 '@

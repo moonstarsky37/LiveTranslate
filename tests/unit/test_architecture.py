@@ -1,6 +1,6 @@
 """Architectural regression tests.
 
-Rule: designated livetranslate.core modules must be importable without Qt or
+Rule: designated sublume.core modules must be importable without Qt or
 torch — that is what makes them unit-testable anywhere (including Linux CI)
 and is the foundation for the macOS port. A plain import check is NOT enough
 on dev machines where the project venv has PyQt6/torch installed, so each
@@ -19,11 +19,11 @@ ROOT = Path(__file__).resolve().parents[2]
 # Extend as Phase 3 purifies more of core/ (vad_processor is torch-bound by
 # nature; audio_capture is Windows-bound until the capture interface lands).
 QT_TORCH_FREE_MODULES = (
-    "livetranslate.core.pipeline",
-    "livetranslate.core.segmentation",
-    "livetranslate.config.schema",
-    "livetranslate.config.store",
-    "livetranslate.paths",
+    "sublume.core.pipeline",
+    "sublume.core.segmentation",
+    "sublume.config.schema",
+    "sublume.config.store",
+    "sublume.paths",
 )
 
 _BLOCKER = """

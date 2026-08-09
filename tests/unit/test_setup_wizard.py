@@ -25,7 +25,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication  # noqa: E402
 
-import livetranslate.ui.dialogs as dialogs  # noqa: E402
+import sublume.ui.dialogs as dialogs  # noqa: E402
 
 pytestmark = pytest.mark.local
 

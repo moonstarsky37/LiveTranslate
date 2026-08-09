@@ -1,5 +1,5 @@
 [project]
-name = "livetranslate"
+name = "sublume"
 version = "2026.8.0"
 description = "Real-time system-audio translation overlay for Windows (fork of TheDeathDragon/LiveTranslate)"
 readme = "README.md"
@@ -30,27 +30,27 @@ check_untyped_defs = false
 # Phase 3 splits and annotates them; never add new modules here.
 module = [
     "main",
-    "livetranslate.main",
-    "livetranslate.benchmark",
-    "livetranslate.core.*",
+    "sublume.main",
+    "sublume.benchmark",
+    "sublume.core.*",
     # moved legacy monolith code (Phase 3); un-baseline when annotated
-    # (livetranslate.core.pipeline is already covered by livetranslate.core.*
+    # (sublume.core.pipeline is already covered by sublume.core.*
     # above; listed explicitly so it is un-baselined with the rest of the batch)
-    "livetranslate.core.pipeline",
-    "livetranslate.asr.supervisor",
-    "livetranslate.asr.engine_switch",
-    "livetranslate.asr.client",
-    "livetranslate.asr.server",
-    "livetranslate.asr.worker",
-    "livetranslate.asr.whisper",
-    "livetranslate.asr.sensevoice",
-    "livetranslate.asr.funasr",
-    "livetranslate.asr.funasr_nano",
-    "livetranslate.asr.anime_whisper",
-    "livetranslate.asr.remote",
-    "livetranslate.translation.translator",
-    "livetranslate.ui.*",
-    "livetranslate.i18n",
+    "sublume.core.pipeline",
+    "sublume.asr.supervisor",
+    "sublume.asr.engine_switch",
+    "sublume.asr.client",
+    "sublume.asr.server",
+    "sublume.asr.worker",
+    "sublume.asr.whisper",
+    "sublume.asr.sensevoice",
+    "sublume.asr.funasr",
+    "sublume.asr.funasr_nano",
+    "sublume.asr.anime_whisper",
+    "sublume.asr.remote",
+    "sublume.translation.translator",
+    "sublume.ui.*",
+    "sublume.i18n",
     "funasr_nano.*",
     "test_audio",
 ]
@@ -61,9 +61,9 @@ ignore_errors = true
 # patterns win): M3-2 split (ui.dialogs, ui.changelog) and the torch-free
 # VAD path (core.silero_onnx).
 module = [
-    "livetranslate.ui.dialogs.*",
-    "livetranslate.ui.changelog",
-    "livetranslate.core.silero_onnx",
+    "sublume.ui.dialogs.*",
+    "sublume.ui.changelog",
+    "sublume.core.silero_onnx",
 ]
 ignore_errors = false
 

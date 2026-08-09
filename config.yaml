@@ -1,4 +1,4 @@
-# LiveTrans Configuration
+# Sublume Configuration
 
 audio:
   # WASAPI loopback device name (null = default output device)

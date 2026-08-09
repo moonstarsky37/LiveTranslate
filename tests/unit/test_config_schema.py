@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from livetranslate.config.schema import Settings  # noqa: E402
+from sublume.config.schema import Settings  # noqa: E402
 
 
 # Shape mirrors a real user_settings.json from a working install.

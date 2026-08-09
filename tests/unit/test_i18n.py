@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-I18N_DIR = ROOT / "livetranslate" / "i18n"
+I18N_DIR = ROOT / "sublume" / "i18n"
 LOCALES = ("en.yaml", "zh-TW.yaml", "zh-CN.yaml")
 
 sys.path.insert(0, str(ROOT))
@@ -47,7 +47,7 @@ def test_no_locale_value_is_empty():
 
 
 def test_set_lang_maps_bare_zh_to_zh_tw():
-    import livetranslate.i18n as i18n
+    import sublume.i18n as i18n
 
     original = i18n.get_lang()
     try:
@@ -58,7 +58,7 @@ def test_set_lang_maps_bare_zh_to_zh_tw():
 
 
 def test_languages_list_splits_chinese():
-    import livetranslate.i18n as i18n
+    import sublume.i18n as i18n
 
     codes = [code for code, _name in i18n.LANGUAGES]
     assert "zh-TW" in codes

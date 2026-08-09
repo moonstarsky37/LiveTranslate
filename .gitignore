@@ -7,7 +7,7 @@ logs/
 transcripts/
 user_settings.json
 # Overlay "export to file" defaults to the repo root when launched from here
-livetrans_*.txt
+sublume_*.txt
 
 # IDE
 .vscode/

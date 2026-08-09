@@ -3,6 +3,6 @@ revision = 3
 requires-python = ">=3.10, <3.13"
 
 [[package]]
-name = "livetranslate"
+name = "sublume"
 version = "2026.8.0"
 source = { virtual = "." }

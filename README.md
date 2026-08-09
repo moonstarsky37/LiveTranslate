@@ -1,14 +1,14 @@
-# LiveTranslate
+# Sublume
 
 繁體中文｜[English](README_en.md)
 
-LiveTranslate 是 Windows 上的即時語音翻譯工具：擷取系統正在播放的音訊，經語音辨識後交由 LLM 翻譯，字幕以透明浮窗顯示在畫面最上層。觀看外語影片、直播，或進行語音通話時，不需修改播放器的任何設定即可使用。
+Sublume 是 Windows 上的即時語音翻譯工具：擷取系統正在播放的音訊，經語音辨識後交由 LLM 翻譯，字幕以透明浮窗顯示在畫面最上層。觀看外語影片、直播，或進行語音通話時，不需修改播放器的任何設定即可使用。
 
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Windows](https://img.shields.io/badge/Platform-Windows-0078d4)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-![LiveTranslate](screenshot/zh.png)
+![Sublume](screenshot/zh.png)
 
 ## 運作方式
 
@@ -41,15 +41,15 @@ LiveTranslate 是 Windows 上的即時語音翻譯工具：擷取系統正在播
 
 ### 免安裝版（不需安裝 Python）
 
-從 [Releases](https://github.com/moonstarsky37/LiveTranslate/releases) 下載 `LiveTranslate-portable-*.zip`，解壓縮後執行 `start.bat`。首次執行會自動下載可攜版 Python 3.12，並依照顯示卡安裝對應的相依套件。
+從 [Releases](https://github.com/moonstarsky37/Sublume/releases) 下載 `Sublume-portable-*.zip`，解壓縮後執行 `start.bat`。首次執行會自動下載可攜版 Python 3.12，並依照顯示卡安裝對應的相依套件。
 
 ### 從原始碼安裝
 
 > 本節僅適用 `git clone` 取得的原始碼。免安裝版 zip **不含** `install.bat` 與 `scripts/`（首次執行 `start.bat` 會自動完成環境安裝，不需要本節的任何步驟）。
 
 ```bash
-git clone https://github.com/moonstarsky37/LiveTranslate.git
-cd LiveTranslate
+git clone https://github.com/moonstarsky37/Sublume.git
+cd Sublume
 ```
 
 執行 `install.bat`，安裝腳本會依序完成：
@@ -105,10 +105,10 @@ pip install -r requirements.txt
 
 ## 專案結構
 
-根目錄的 `main.py` 為入口 shim，實際程式碼在 `livetranslate/` 套件內。`python main.py`、`python -m livetranslate`、`start.bat` 三種啟動方式等價。
+根目錄的 `main.py` 為入口 shim，實際程式碼在 `sublume/` 套件內。`python main.py`、`python -m sublume`、`start.bat` 三種啟動方式等價。
 
 ```
-livetranslate/
+sublume/
 ├── main.py             應用程式主體與啟動流程
 ├── paths.py            執行期資料路徑（config.yaml、models/、logs/、transcripts/）
 ├── model_manager/      模型偵測、下載（HuggingFace）與快取管理
@@ -134,7 +134,7 @@ fork 自 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTr
 
 ## 更新日誌
 
-[繁體中文](livetranslate/i18n/CHANGELOG_zh-TW.md) | [English](livetranslate/i18n/CHANGELOG_en.md)
+[繁體中文](sublume/i18n/CHANGELOG_zh-TW.md) | [English](sublume/i18n/CHANGELOG_en.md)
 
 ## 架構
 

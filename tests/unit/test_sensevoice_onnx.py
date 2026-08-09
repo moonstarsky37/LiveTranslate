@@ -15,8 +15,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-import livetranslate.model_manager as mm  # noqa: E402
-from livetranslate.asr.sensevoice_onnx import (  # noqa: E402
+import sublume.model_manager as mm  # noqa: E402
+from sublume.asr.sensevoice_onnx import (  # noqa: E402
     LANG_MAP,
     SUPPORTED_LANGUAGES,
     normalize_language,

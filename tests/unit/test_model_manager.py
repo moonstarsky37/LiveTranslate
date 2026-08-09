@@ -16,7 +16,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-import livetranslate.model_manager as mm  # noqa: E402
+import sublume.model_manager as mm  # noqa: E402
 
 
 # --------------------------------------------------------------------------

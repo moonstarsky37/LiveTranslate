@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT))
 np = pytest.importorskip("numpy")
 pytest.importorskip("onnxruntime")
 
-from livetranslate.core.silero_onnx import (  # noqa: E402
+from sublume.core.silero_onnx import (  # noqa: E402
     SILERO_ONNX_PATH,
     SileroOnnxModel,
 )
@@ -58,7 +58,7 @@ def _mixed_stream(n_chunks: int, seed: int = 7) -> list:
 
 
 def test_vendored_model_exists_and_yields_probabilities():
-    assert SILERO_ONNX_PATH.exists(), "vendored model missing from livetranslate/assets"
+    assert SILERO_ONNX_PATH.exists(), "vendored model missing from sublume/assets"
     model = SileroOnnxModel()
     for chunk in _mixed_stream(16):
         prob = model(chunk, SR)
@@ -89,7 +89,7 @@ def test_model_resolution_falls_back_to_onnx(monkeypatch):
     """Without the silero-vad package the loader must hand back the vendored
     ONNX model. Patch the adapter on the module that reads it (vad_processor),
     not a re-export."""
-    import livetranslate.core.vad_processor as vp
+    import sublume.core.vad_processor as vp
 
     def _no_package(*args, **kwargs):
         raise ImportError("silero_vad not installed")
@@ -106,7 +106,7 @@ def test_parity_with_jit():
     to 1e-4 per chunk or the two paths are no longer the same VAD."""
     pytest.importorskip("torch")
     pytest.importorskip("silero_vad")
-    from livetranslate.core.vad_processor import _SileroJitAdapter
+    from sublume.core.vad_processor import _SileroJitAdapter
 
     jit = _SileroJitAdapter()
     onnx = SileroOnnxModel()

@@ -18,8 +18,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-import livetranslate.translation.translator as translator_mod  # noqa: E402
-from livetranslate.translation.translator import (  # noqa: E402
+import sublume.translation.translator as translator_mod  # noqa: E402
+from sublume.translation.translator import (  # noqa: E402
     DEFAULT_PROMPT,
     LANGUAGE_DISPLAY,
     PROMPT_PRESETS,

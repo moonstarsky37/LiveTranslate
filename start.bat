@@ -10,10 +10,10 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
 )
 
-echo Starting LiveTranslate...
+echo Starting Sublume...
 .venv\Scripts\python.exe main.py
 if errorlevel 1 (
     echo.
-    echo [ERROR] LiveTranslate exited with an error.
+    echo [ERROR] Sublume exited with an error.
     pause
 )

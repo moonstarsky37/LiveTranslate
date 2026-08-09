@@ -1,14 +1,14 @@
-# LiveTranslate
+# Sublume
 
 [繁體中文](README.md)｜English
 
-LiveTranslate is a real-time speech translation tool for Windows. It captures whatever the system is playing, runs speech recognition, translates the text through an LLM, and shows subtitles in a transparent overlay on top of the screen. Works for foreign-language videos, livestreams, and voice calls without touching any player settings.
+Sublume is a real-time speech translation tool for Windows. It captures whatever the system is playing, runs speech recognition, translates the text through an LLM, and shows subtitles in a transparent overlay on top of the screen. Works for foreign-language videos, livestreams, and voice calls without touching any player settings.
 
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Windows](https://img.shields.io/badge/Platform-Windows-0078d4)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-![LiveTranslate](screenshot/en.png)
+![Sublume](screenshot/en.png)
 
 ## How it works
 
@@ -41,13 +41,13 @@ Audio is captured in 32ms chunks; Silero VAD segments complete utterances and fe
 
 ### Portable build (no Python installation required)
 
-Download `LiveTranslate-portable-*.zip` from [Releases](https://github.com/moonstarsky37/LiveTranslate/releases), unzip, and run `start.bat`. The first run downloads a portable Python 3.12 and installs dependencies matching the GPU.
+Download `Sublume-portable-*.zip` from [Releases](https://github.com/moonstarsky37/Sublume/releases), unzip, and run `start.bat`. The first run downloads a portable Python 3.12 and installs dependencies matching the GPU.
 
 ### From source
 
 ```bash
-git clone https://github.com/moonstarsky37/LiveTranslate.git
-cd LiveTranslate
+git clone https://github.com/moonstarsky37/Sublume.git
+cd Sublume
 ```
 
 Run `install.bat`. The installer will:
@@ -96,10 +96,10 @@ With a local model the whole pipeline runs offline. Other services are configure
 
 ## Project layout
 
-`main.py` at the repository root is a thin entry shim; the actual code lives in the `livetranslate/` package. `python main.py`, `python -m livetranslate`, and `start.bat` are equivalent ways to launch.
+`main.py` at the repository root is a thin entry shim; the actual code lives in the `sublume/` package. `python main.py`, `python -m sublume`, and `start.bat` are equivalent ways to launch.
 
 ```
-livetranslate/
+sublume/
 ├── main.py             Application core and startup flow
 ├── paths.py            Runtime data paths (config.yaml, models/, logs/, transcripts/)
 ├── model_manager/      Model detection, download (HuggingFace), and cache management
@@ -125,7 +125,7 @@ This is a fork of [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDrag
 
 ## Changelog
 
-[English](livetranslate/i18n/CHANGELOG_en.md) | [繁體中文](livetranslate/i18n/CHANGELOG_zh-TW.md)
+[English](sublume/i18n/CHANGELOG_en.md) | [繁體中文](sublume/i18n/CHANGELOG_zh-TW.md)
 
 ## Architecture
 

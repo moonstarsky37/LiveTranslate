@@ -23,8 +23,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication  # noqa: E402
 
-from livetranslate.i18n import t  # noqa: E402
-from livetranslate.ui.overlay.handle import (  # noqa: E402
+from sublume.i18n import t  # noqa: E402
+from sublume.ui.overlay.handle import (  # noqa: E402
     DEFAULT_OVERLAY_TEMPLATE,
     OVERLAY_TEMPLATES,
     DragHandle,

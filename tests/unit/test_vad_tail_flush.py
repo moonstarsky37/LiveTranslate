@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT))
 
 import numpy as np  # noqa: E402
 
-from livetranslate.core.vad_processor import VADProcessor  # noqa: E402
+from sublume.core.vad_processor import VADProcessor  # noqa: E402
 
 pytestmark = pytest.mark.local
 

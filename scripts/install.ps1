@@ -1,4 +1,4 @@
-# LiveTranslate - One-click installer (git-clone workflow)
+# Sublume - One-click installer (git-clone workflow)
 # Usage: Double-click install.bat (or run: powershell -ExecutionPolicy Bypass -File scripts\install.ps1)
 #
 # Environment setup is delegated to uv, which downloads its own CPython 3.12.
@@ -55,7 +55,7 @@ function Enable-SystemProxy {
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Magenta
-Write-Host "   LiveTranslate Installer" -ForegroundColor Magenta
+Write-Host "   Sublume Installer" -ForegroundColor Magenta
 Write-Host "========================================" -ForegroundColor Magenta
 
 Enable-SystemProxy
@@ -253,7 +253,7 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host "   Installation complete!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  To start LiveTranslate:" -ForegroundColor White
+Write-Host "  To start Sublume:" -ForegroundColor White
 Write-Host "    Double-click start.bat" -ForegroundColor Yellow
 Write-Host "    or run: .venv\Scripts\python.exe main.py" -ForegroundColor Yellow
 Write-Host ""

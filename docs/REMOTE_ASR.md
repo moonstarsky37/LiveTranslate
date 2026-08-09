@@ -1,9 +1,9 @@
 # Remote Whisper ASR
 
-Run speech recognition on a separate GPU machine and let LiveTranslate talk to it over HTTP. Useful when the PC running LiveTranslate has no NVIDIA GPU (CPU-only faster-whisper is too slow for real-time) but another machine on the LAN does.
+Run speech recognition on a separate GPU machine and let Sublume talk to it over HTTP. Useful when the PC running Sublume has no NVIDIA GPU (CPU-only faster-whisper is too slow for real-time) but another machine on the LAN does.
 
 ```
-LiveTranslate (this PC) ──HTTP──> server.py (GPU machine) ──> faster-whisper / CUDA
+Sublume (this PC) ──HTTP──> server.py (GPU machine) ──> faster-whisper / CUDA
       RemoteASREngine              /transcribe, /health
 ```
 
@@ -11,7 +11,7 @@ LiveTranslate (this PC) ──HTTP──> server.py (GPU machine) ──> faster
 
 Requires Python 3.10+ and an NVIDIA GPU.
 
-The server lives at `livetranslate/asr/server.py`. It is self-contained (only faster-whisper, FastAPI, uvicorn, and numpy), so copying that single file to the GPU machine is enough.
+The server lives at `sublume/asr/server.py`. It is self-contained (only faster-whisper, FastAPI, uvicorn, and numpy), so copying that single file to the GPU machine is enough.
 
 ```bash
 pip install faster-whisper fastapi uvicorn numpy
@@ -54,7 +54,7 @@ To start the server on boot and restart it on failure:
 ```ini
 # /etc/systemd/system/asr.service
 [Unit]
-Description=LiveTranslate Remote ASR Server
+Description=Sublume Remote ASR Server
 After=network-online.target
 
 [Service]
@@ -73,7 +73,7 @@ sudo systemctl enable --now asr.service
 journalctl -u asr.service -f          # follow logs
 ```
 
-## 2. In LiveTranslate — point at the server
+## 2. In Sublume — point at the server
 
 1. Open Settings → VAD / ASR.
 2. Set the ASR engine to Remote Whisper (remote GPU server).

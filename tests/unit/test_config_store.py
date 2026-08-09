@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from livetranslate.config.store import SettingsStore  # noqa: E402
+from sublume.config.store import SettingsStore  # noqa: E402
 
 
 def make_store(tmp_path: Path) -> SettingsStore:

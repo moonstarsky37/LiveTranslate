@@ -17,9 +17,9 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-import livetranslate.i18n as i18n  # noqa: E402
+import sublume.i18n as i18n  # noqa: E402
 
-I18N_DIR = ROOT / "livetranslate" / "i18n"
+I18N_DIR = ROOT / "sublume" / "i18n"
 
 # A key that exists in every locale file and has a distinct value per language.
 SAMPLE_KEY = "translating"

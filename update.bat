@@ -3,7 +3,7 @@ cd /d "%~dp0"
 set PATH=%LOCALAPPDATA%\Microsoft\WinGet\Links;%USERPROFILE%\.local\bin;%PATH%
 
 echo ========================================
-echo   LiveTranslate Updater
+echo   Sublume Updater
 echo ========================================
 echo.
 
