@@ -2,11 +2,51 @@ import logging
 import collections
 
 import numpy as np
-import torch
-
-torch.set_num_threads(1)
 
 log = logging.getLogger("LiveTranslate.VAD")
+
+
+class _SileroJitAdapter:
+    """The silero-vad package's jit model behind the shared VAD-model contract
+    (numpy float32 chunk in, Python float out) — torch stays an internal
+    detail of this class and never reaches the caller."""
+
+    def __init__(self):
+        import torch
+        from silero_vad import load_silero_vad
+
+        torch.set_num_threads(1)
+        self._torch = torch
+        self._model = load_silero_vad()
+        self._model.eval()
+
+    def __call__(self, chunk: np.ndarray, sr: int) -> float:
+        torch = self._torch
+        with torch.inference_mode():
+            tensor = torch.from_numpy(chunk).float()
+            return float(self._model(tensor, sr).item())
+
+    def reset_states(self) -> None:
+        self._model.reset_states()
+
+
+def _load_silero_model():
+    """Silero model resolution.
+
+    1. silero-vad package importable (torch profile): the jit model, exactly
+       as before — a torch install keeps its current behavior.
+    2. Otherwise: the vendored ONNX model over onnxruntime (same v6 weights,
+       no torch). This also replaces the old torch.hub fallback, which hit
+       GitHub and only served hand-built envs with torch but no silero-vad
+       package — those now get the ONNX path instead.
+    """
+    try:
+        return _SileroJitAdapter()
+    except ImportError:
+        from livetranslate.core.silero_onnx import SileroOnnxModel
+
+        log.info("silero-vad package unavailable, using vendored ONNX model")
+        return SileroOnnxModel()
 
 
 class VADProcessor:
@@ -33,21 +73,7 @@ class VADProcessor:
         self._chunk_duration = chunk_duration
         self.mode = "silero"  # "silero", "energy", "disabled"
 
-        # Silero v5 ships its model inside the `silero-vad` PyPI package, so load
-        # it from there (zero network). Only fall back to the torch.hub cache
-        # (pinned branch -> offline when already cached) if the package is
-        # missing, since torch.hub otherwise probes/downloads from GitHub.
-        try:
-            from silero_vad import load_silero_vad
-        except ImportError:
-            self._model, _ = torch.hub.load(
-                repo_or_dir="snakers4/silero-vad:master",
-                model="silero_vad",
-                trust_repo=True,
-            )
-        else:
-            self._model = load_silero_vad()
-        self._model.eval()
+        self._model = _load_silero_model()
 
         self._speech_buffer = []
         self._confidence_history = []  # per-chunk confidence, synced with _speech_buffer
@@ -145,9 +171,8 @@ class VADProcessor:
         chunk = audio_chunk[:window_size]
         if len(chunk) < window_size:
             chunk = np.pad(chunk, (0, window_size - len(chunk)))
-        with torch.inference_mode():
-            tensor = torch.from_numpy(chunk).float()
-            return float(self._model(tensor, self.sample_rate).item())
+        # Both adapters share one contract: numpy float32 chunk in, float out.
+        return self._model(np.asarray(chunk, dtype=np.float32), self.sample_rate)
 
     def _energy_confidence(self, audio_chunk: np.ndarray) -> float:
         rms = float(np.sqrt(np.mean(audio_chunk**2)))

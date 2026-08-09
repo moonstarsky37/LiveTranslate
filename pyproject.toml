@@ -57,9 +57,14 @@ module = [
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-# M3-2: ui/dialogs left the monolith, so it leaves the ui.* baseline too.
-# This more specific pattern wins over "livetranslate.ui.*" above.
-module = ["livetranslate.ui.dialogs.*", "livetranslate.ui.changelog"]
+# New modules pulled back out of the baseline globs above (more specific
+# patterns win): M3-2 split (ui.dialogs, ui.changelog) and the torch-free
+# VAD path (core.silero_onnx).
+module = [
+    "livetranslate.ui.dialogs.*",
+    "livetranslate.ui.changelog",
+    "livetranslate.core.silero_onnx",
+]
 ignore_errors = false
 
 [tool.pytest.ini_options]
