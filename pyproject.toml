@@ -56,6 +56,12 @@ module = [
 ]
 ignore_errors = true
 
+[[tool.mypy.overrides]]
+# M3-2: ui/dialogs left the monolith, so it leaves the ui.* baseline too.
+# This more specific pattern wins over "livetranslate.ui.*" above.
+module = ["livetranslate.ui.dialogs.*", "livetranslate.ui.changelog"]
+ignore_errors = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [

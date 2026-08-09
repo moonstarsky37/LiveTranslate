@@ -111,7 +111,7 @@ pip install -r requirements.txt
 livetranslate/
 ├── main.py             應用程式主體與啟動流程
 ├── paths.py            執行期資料路徑（config.yaml、models/、logs/、transcripts/）
-├── model_manager.py    模型偵測、下載與快取管理
+├── model_manager/      模型偵測、下載（HuggingFace）與快取管理
 ├── benchmark.py        翻譯效能測試
 ├── core/               音訊擷取（WASAPI loopback）、Silero VAD、逐字稿寫入
 ├── asr/                各 ASR 後端、worker 子行程、遠端 ASR 伺服器與用戶端
@@ -135,6 +135,51 @@ fork 自 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTr
 ## 更新日誌
 
 [繁體中文](livetranslate/i18n/CHANGELOG_zh-TW.md) | [English](livetranslate/i18n/CHANGELOG_en.md)
+
+## 架構
+
+整條管線在本機的三種執行單位之間流動：GUI 主行程負責介面與翻譯、背景執行緒負責音訊與排隊、ASR worker 子行程獨佔辨識引擎（切換引擎時直接汰換子行程，模型與 VRAM 隨行程釋放，GUI 永不卡死）。
+
+```mermaid
+flowchart TB
+    audio(["系統音訊（可混入麥克風）"])
+
+    subgraph main["GUI 主行程（Qt 事件圈）"]
+        direction TB
+        subgraph capthread["擷取執行緒"]
+            cap["音訊擷取 core/audio_capture.py<br/>WASAPI loopback·32ms"]
+            vad["語句切分 core/vad_processor.py<br/>Silero VAD／能量式"]
+        end
+        asrq["ASR 佇列執行緒 core/pipeline.py<br/>增量辨識與斷句"]
+        cli["ASRClient asr/client.py<br/>worker 生命週期與逾時"]
+        tr["翻譯 translation/translator.py<br/>非同步·串流·JSON·上下文"]
+        ui1["字幕浮窗 ui/overlay/"]
+        ui2["OBS 字幕視窗<br/>ui/overlay/subtitle_window.py"]
+        tw["逐字稿 core/transcript_writer.py"]
+        cp["設定面板 ui/control_panel/<br/>對話框 ui/dialogs/"]
+    end
+
+    subgraph wk["ASR worker 子行程 asr/worker.py"]
+        eng["單一辨識引擎，擇一載入<br/>SenseVoice ONNX（預設，CPU 秒開）<br/>faster-whisper／FunASR／Anime-Whisper／遠端 ASR"]
+    end
+
+    llm[("OpenAI 相容 API<br/>雲端或本機 llama.cpp／Ollama／vLLM")]
+    hub[("HuggingFace Hub<br/>（僅下載模型時）")]
+
+    st["設定 config/store.py<br/>user_settings.json ＋ config.yaml"]
+    mm["模型管理 model_manager/<br/>registry·cache·download"]
+
+    audio --> cap --> vad -->|"完整語句段"| asrq --> cli
+    cli <-->|"multiprocessing.Pipe"| eng
+    cli -->|"辨識文字"| tr
+    tr <-->|"HTTPS"| llm
+    tr --> ui1 & ui2 & tw
+    cp -.->|"讀寫設定"| st
+    cp -.->|"缺模型時觸發下載"| mm
+    mm <-->|"下載"| hub
+```
+
+跨執行緒的 UI 更新一律走 Qt signal；設定檔讀寫只經過 `SettingsStore`（原子寫入＋載入時遷移）。
 
 ## 致謝
 
