@@ -2,13 +2,40 @@
 
 繁體中文｜[English](README_en.md)
 
-Sublume 是 Windows 上的即時語音翻譯工具：擷取系統正在播放的音訊，經語音辨識後交由 LLM 翻譯，字幕以透明浮窗顯示在畫面最上層。觀看外語影片、直播，或進行語音通話時，不需修改播放器的任何設定即可使用。
+**Sublume** 是 Windows 上的**即時翻譯字幕**工具（macOS 版開發中）：看直播、看影片時，直接擷取電腦正在播放的聲音，在本機完成語音辨識，再交由翻譯模型（OpenAI 相容的本地 LLM 或 API 皆可）翻譯，字幕以透明浮窗疊在畫面最上層。**直播翻譯**不需要動播放器或網站的任何設定——只要電腦放得出聲音，Sublume 就能提取出來，替它上字幕。
 
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Windows](https://img.shields.io/badge/Platform-Windows-0078d4)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-![Sublume](screenshot/zh.png)
+![Sublume 即時翻譯字幕浮窗](screenshot/hero.png)
+
+## 介面總覽
+
+### 浮窗字幕（主介面）
+
+![字幕浮窗](screenshot/overlay.png)
+
+半透明、永遠置頂、可滑鼠穿透的字幕浮窗——原文與譯文成對捲動，附辨識／翻譯延遲與資源監控列。
+適合：看直播、看影片、語音通話，蓋在任何播放器上直接用。
+
+浮窗頂欄有三種版面（設定 → 樣式），由上到下：**完整**（所有控制項）、**精簡**（開關收進選單）、**單列**（只留主要控制）：
+
+![三種頂欄版面](screenshot/header-templates.png)
+
+### OBS 獨立字幕視窗
+
+![OBS 字幕視窗](screenshot/subtitle-window.png)
+
+乾淨的描邊字幕視窗，專為 OBS 視窗擷取設計，每行字型、顏色、描邊與進出場動畫獨立可調。
+適合：直播主要在自己的直播畫面上疊即時翻譯字幕。
+
+### 控制面板
+
+![控制面板](screenshot/control-panel.png)
+
+ASR 引擎、VAD 切分、翻譯模型、字幕樣式、效能測試、模型快取，全部改完即生效（自動儲存）。
+適合：第一次調校完就收進系統匣，之後幾乎不用再打開。
 
 ## 運作方式
 
@@ -17,11 +44,11 @@ Sublume 是 Windows 上的即時語音翻譯工具：擷取系統正在播放的
         ↑ 可選擇混入麥克風
 ```
 
-音訊以 32ms 為單位擷取，Silero VAD 切分出完整語句後送入 ASR，辨識結果再交由設定好的翻譯模型處理。除翻譯 API 外，整條管線皆在本機執行；具備 NVIDIA 顯示卡時，ASR 會以 CUDA 加速。
+音訊以 32ms 為單位擷取，Silero VAD 切分出完整語句後送入 ASR，辨識結果再交由設定好的翻譯模型處理。除翻譯 API 外，整條管線皆在本機執行；預設引擎（SenseVoice ONNX）在 CPU 上即可即時辨識，選用 torch 系引擎且具備 NVIDIA 顯示卡時會以 CUDA 加速。
 
 ## 功能
 
-- 多種 ASR 引擎可選：faster-whisper、SenseVoice、FunASR Nano，以及針對日語動畫與 Galgame 調校的 Anime-Whisper
+- 多種 ASR 引擎可選：SenseVoice ONNX（預設，CPU 數秒啟動）、faster-whisper、SenseVoice、FunASR Nano，以及針對日語動畫與 Galgame 調校的 Anime-Whisper
 - 翻譯支援任何 OpenAI 相容 API：OpenAI 等雲端服務，或 Ollama、llama.cpp server、vLLM 等本地服務皆可，搭配本地模型即可完全離線使用
 - 本機沒有 GPU 時，語音辨識可交由區網內另一台 GPU 機器執行，詳見 [REMOTE_ASR.md](docs/REMOTE_ASR.md)
 - 翻譯結果逐字串流顯示；串流、JSON 結構化輸出、上下文歷史、停用思考等選項可逐一針對各模型設定
@@ -32,7 +59,7 @@ Sublume 是 Windows 上的即時語音翻譯工具：擷取系統正在播放的
 
 ## 系統需求
 
-- Windows 10 / 11
+- Windows 10 / 11（macOS 版開發中，目前尚不可用）
 - 不需預先安裝 Python：`install.bat` 會經 uv 自動取得 Python 3.12（3.13 因相依套件尚未支援而排除）
 - 建議配備 NVIDIA 顯示卡與 CUDA 12.6（RTX 50 系列等 Blackwell 架構需 CUDA 12.8）；純 CPU 亦可執行，惟辨識速度較慢
 - 網路需能連上翻譯 API 與 HuggingFace（翻譯採用本地模型時，僅初次下載 ASR 模型需要網路）
@@ -81,12 +108,12 @@ pip install -r requirements.txt
 
 ## 首次啟動
 
-首次啟動會出現設定精靈：按「開始下載」即會抓取 Silero VAD 與 SenseVoice 模型（約 1GB），完成後進入主介面。若連線 HuggingFace 不穩定，可於精靈內填入下載 Proxy。
+首次啟動會出現設定精靈：先選辨識引擎（預設 SenseVoice ONNX，下載約 240MB；torch 版 SenseVoice 約 1GB），按「開始下載」後抓取模型，完成後進入主介面。若連線 HuggingFace 不穩定，可於精靈內填入下載 Proxy。
 
 ### 模型下載的速度與穩定性
 
 - 下載失敗（如 500 / CAS 錯誤）多為 HuggingFace 端暫時性故障，按「重試」即可續傳；已下載的部分不會重來。
-- HuggingFace 對匿名下載有限流。若下載緩慢，可至 [huggingface.co](https://huggingface.co/settings/tokens) 免費申請 token，在 cmd 執行 `setx HF_TOKEN hf_你的token` 後**重新啟動程式**即可生效（程式會自動讀取，無需改任何設定檔）。目前尚無 GUI 設定欄位（規劃中）。
+- HuggingFace 對匿名下載有限流。若下載緩慢，可至 [huggingface.co](https://huggingface.co/settings/tokens) 免費申請 token，填入「設定 → 快取」的 HF Token 欄位；或在 cmd 執行 `setx HF_TOKEN hf_你的token` 後**重新啟動程式**（程式會自動讀取環境變數）。
 - 精靈中的 Proxy 設定只影響模型下載；台灣一般網路環境選「不使用 Proxy」即可。
 - 中途關閉程式不會壞事：設定已在按下「開始下載」當下寫入，下次啟動會直接從缺少的模型續傳，不會重跑精靈。
 
@@ -111,9 +138,11 @@ pip install -r requirements.txt
 sublume/
 ├── main.py             應用程式主體與啟動流程
 ├── paths.py            執行期資料路徑（config.yaml、models/、logs/、transcripts/）
+├── config/             Settings dataclass 與 SettingsStore（user_settings.json 唯一出入口）
 ├── model_manager/      模型偵測、下載（HuggingFace）與快取管理
+├── assets/             vendored Silero VAD ONNX 模型（來源與雜湊見其 README）
 ├── benchmark.py        翻譯效能測試
-├── core/               音訊擷取（WASAPI loopback）、Silero VAD、逐字稿寫入
+├── core/               音訊擷取（WASAPI loopback）、Silero VAD（jit／ONNX）、增量斷句、逐字稿寫入
 ├── asr/                各 ASR 後端、worker 子行程、遠端 ASR 伺服器與用戶端
 ├── translation/        OpenAI 相容翻譯用戶端（串流、JSON、上下文）
 ├── ui/                 設定面板、對話框、日誌視窗、字幕浮窗與 OBS 字幕視窗
@@ -121,10 +150,13 @@ sublume/
 funasr_nano/            vendored 模型程式碼
 ```
 
-## 本 fork 與上游的差異
+## 源起與差異
 
-fork 自 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate)，主要改了這些：
+Sublume 的前身是 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate)（MIT）的 fork，2026-08 起改以現名獨立維護。相對原專案的主要差異：
 
+- **SenseVoice ONNX 為預設辨識引擎**（sherpa-onnx）：CPU 上數秒啟動、不需 CUDA，模型 240MB（torch 版 936MB）。
+- **輕量化進行中**：VAD 已改走 ONNX，torch 正在變成可選依賴。
+- **安裝不需預裝 Python**：`install.bat` 經 uv 自動取得 Python 3.12，並依顯示卡自動選擇 CUDA 或 CPU 版。
 - **模型改從 HuggingFace 下載**。上游預設走 ModelScope，在部分網路環境幾乎連不上；之前下載好的模型不受影響，不用重抓。
 - **初始設定流程重做**，不會再自己倒數 15 秒就開始下載；中途關掉程式，下次打開會從斷掉的地方繼續。
 - **介面與文件改以繁體中文為主**，英文與簡體中文照常維護。
@@ -183,7 +215,7 @@ flowchart TB
 
 ## 致謝
 
-本專案 fork 自 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate)（MIT），音訊管線、辨識引擎整合與字幕介面的核心實作源自上游。
+Sublume 源自 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate)（MIT），音訊管線、辨識引擎整合與字幕介面的核心實作源自該專案。
 
 - [faster-whisper](https://github.com/SYSTRAN/faster-whisper) — 基於 CTranslate2 的 Whisper 推論
 - [FunASR](https://github.com/modelscope/FunASR) — SenseVoice / Fun-ASR-Nano
