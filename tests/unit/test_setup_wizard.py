@@ -98,7 +98,7 @@ def test_engine_is_persisted_when_download_starts(wizard, monkeypatch, pick_torc
     window mid-download resumes through the missing-model dialog."""
     started = {}
     monkeypatch.setattr(
-        dialogs.threading, "Thread", lambda **kw: _StubThread(started, **kw)
+        dialogs.setup_wizard.threading, "Thread", lambda **kw: _StubThread(started, **kw)
     )
     wizard._engine_torch.setChecked(pick_torch)
     wizard._start_download()
@@ -129,9 +129,13 @@ class _StubThread:
 )
 def test_download_worker_fetches_the_chosen_model(wizard, monkeypatch, engine, expect_call):
     calls = []
-    monkeypatch.setattr(dialogs, "download_silero", lambda **kw: calls.append(("silero",)))
+    # Patch the module that reads the name (dialogs.setup_wizard), not the
+    # package re-export — patching the latter would be a no-op (M3-1 lesson).
     monkeypatch.setattr(
-        dialogs, "download_asr", lambda name, **kw: calls.append((name,))
+        dialogs.setup_wizard, "download_silero", lambda **kw: calls.append(("silero",))
+    )
+    monkeypatch.setattr(
+        dialogs.setup_wizard, "download_asr", lambda name, **kw: calls.append((name,))
     )
     wizard._download_worker("system", engine)
     assert wizard._error is None
@@ -139,12 +143,12 @@ def test_download_worker_fetches_the_chosen_model(wizard, monkeypatch, engine, e
 
 
 def test_download_failure_is_reported_not_raised(wizard, monkeypatch):
-    monkeypatch.setattr(dialogs, "download_silero", lambda **kw: None)
+    monkeypatch.setattr(dialogs.setup_wizard, "download_silero", lambda **kw: None)
 
     def boom(name, **kw):
         raise RuntimeError("network died\nsecond line with detail")
 
-    monkeypatch.setattr(dialogs, "download_asr", boom)
+    monkeypatch.setattr(dialogs.setup_wizard, "download_asr", boom)
     wizard._download_worker("system", "sensevoice-onnx")
     # Only the first line reaches the dialog; the traceback stays in the log.
     assert wizard._error == "network died"

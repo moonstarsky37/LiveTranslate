@@ -8,10 +8,10 @@ class ChangelogTabMixin:
     """Changelog tab methods, mixed into ControlPanel."""
 
     def _create_changelog_tab(self):
-        from livetranslate.ui.dialogs import _load_latest_changelog
+        from livetranslate.ui.changelog import load_latest_changelog
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        _, html = _load_latest_changelog()
+        _, html = load_latest_changelog()
         from PyQt6.QtWidgets import QTextBrowser
         browser = QTextBrowser()
         browser.setOpenExternalLinks(True)
