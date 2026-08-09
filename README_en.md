@@ -102,7 +102,7 @@ With a local model the whole pipeline runs offline. Other services are configure
 livetranslate/
 ├── main.py             Application core and startup flow
 ├── paths.py            Runtime data paths (config.yaml, models/, logs/, transcripts/)
-├── model_manager.py    Model detection, download, and cache management
+├── model_manager/      Model detection, download (HuggingFace), and cache management
 ├── benchmark.py        Translation benchmark
 ├── core/               Audio capture (WASAPI loopback), Silero VAD, transcript writer
 ├── asr/                ASR backends, worker subprocess, remote ASR server and client
@@ -126,6 +126,51 @@ This is a fork of [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDrag
 ## Changelog
 
 [English](livetranslate/i18n/CHANGELOG_en.md) | [繁體中文](livetranslate/i18n/CHANGELOG_zh-TW.md)
+
+## Architecture
+
+The pipeline flows through three kinds of execution units, all local: the GUI process owns the interface and translation, background threads own audio and queuing, and an ASR worker subprocess owns the recognition engine (switching engines replaces the subprocess, so models and VRAM are freed with it and the GUI never blocks).
+
+```mermaid
+flowchart TB
+    audio(["System audio (mic mix-in optional)"])
+
+    subgraph main["GUI process (Qt event loop)"]
+        direction TB
+        subgraph capthread["Capture thread"]
+            cap["Audio capture core/audio_capture.py<br/>WASAPI loopback · 32ms chunks"]
+            vad["Sentence segmentation core/vad_processor.py<br/>Silero VAD / energy-based"]
+        end
+        asrq["ASR queue thread core/pipeline.py<br/>incremental ASR + sentence splitting"]
+        cli["ASRClient asr/client.py<br/>worker lifecycle + timeouts"]
+        tr["Translation translation/translator.py<br/>async · streaming · JSON · context"]
+        ui1["Subtitle overlay ui/overlay/"]
+        ui2["OBS subtitle window<br/>ui/overlay/subtitle_window.py"]
+        tw["Transcripts core/transcript_writer.py"]
+        cp["Settings panel ui/control_panel/<br/>dialogs ui/dialogs/"]
+    end
+
+    subgraph wk["ASR worker subprocess asr/worker.py"]
+        eng["One recognition engine, loaded exclusively<br/>SenseVoice ONNX (default, starts in seconds on CPU)<br/>faster-whisper / FunASR / Anime-Whisper / remote ASR"]
+    end
+
+    llm[("OpenAI-compatible API<br/>cloud or local llama.cpp / Ollama / vLLM")]
+    hub[("HuggingFace Hub<br/>(model downloads only)")]
+
+    st["Settings config/store.py<br/>user_settings.json + config.yaml"]
+    mm["Model management model_manager/<br/>registry · cache · download"]
+
+    audio --> cap --> vad -->|"complete utterance"| asrq --> cli
+    cli <-->|"multiprocessing.Pipe"| eng
+    cli -->|"recognized text"| tr
+    tr <-->|"HTTPS"| llm
+    tr --> ui1 & ui2 & tw
+    cp -.->|"read/write settings"| st
+    cp -.->|"triggers downloads when models are missing"| mm
+    mm <-->|"download"| hub
+```
+
+Cross-thread UI updates always go through Qt signals; settings I/O goes only through `SettingsStore` (atomic writes + load-time migrations).
 
 ## Acknowledgements
 
