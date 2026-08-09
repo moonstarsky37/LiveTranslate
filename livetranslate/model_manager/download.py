@@ -17,8 +17,8 @@ from livetranslate.model_manager.registry import (
 )
 from livetranslate.model_manager.cache import (
     MODELS_DIR,
-    _has_silero_pkg,
     get_local_model_path,
+    is_silero_cached,
 )
 
 log = logging.getLogger("LiveTranslate.ModelManager")
@@ -83,8 +83,11 @@ def _proxy_env(proxy: str):
 
 
 def download_silero(proxy: str = "system"):
-    if _has_silero_pkg():
-        log.info("Silero VAD bundled by silero-vad package, no download needed")
+    # Vendored ONNX model / silero-vad package / torch.hub cache all satisfy
+    # the VAD; the torch.hub download below only runs on a checkout with the
+    # vendored asset stripped AND no package — and still needs torch.
+    if is_silero_cached():
+        log.info("Silero VAD already available (vendored/package/cache), no download needed")
         return
     import torch
 

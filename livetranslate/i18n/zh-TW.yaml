@@ -248,6 +248,7 @@ override_hint: "未勾選時使用伺服器端預設值或全域設定"
 loading_model: "正在載入 {name}...\n請稍候。"
 error_title: "錯誤"
 error_load_asr: "ASR 模型載入失敗:\n{error}"
+error_engine_needs_torch: "此 ASR 引擎需要 PyTorch,目前環境未安裝。\n\n請在程式環境安裝後重新啟動:\n有 NVIDIA 顯示卡:pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126\n僅 CPU:pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu\n\n目前引擎維持運作。"
 asr_restore_succeeded: "已還原上一個 ASR worker。"
 asr_restore_failed: "還原上一個 ASR worker 也失敗: {error}"
 

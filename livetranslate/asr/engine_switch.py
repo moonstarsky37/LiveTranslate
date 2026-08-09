@@ -6,6 +6,7 @@ instance; methods here reach the owning LiveTranslateApp via ``self._app``
 exactly as before the split.
 """
 
+import importlib.util
 import logging
 import threading
 from pathlib import Path
@@ -29,6 +30,10 @@ from livetranslate.ui.dialogs import ModelDownloadDialog, _ModelLoadDialog
 from livetranslate.i18n import t
 
 log = logging.getLogger("LiveTranslate")
+
+# Engines whose worker imports torch. whisper (ctranslate2), remote-whisper
+# and sensevoice-onnx all run without it.
+_TORCH_ENGINES = {"funasr", "anime-whisper"}
 
 
 class EngineSwitchMixin:
@@ -67,6 +72,17 @@ class EngineSwitchMixin:
         engine_type, funasr_model = normalize_asr_engine_selection(
             engine_type, settings.get("funasr_model", self._funasr_model_key)
         )
+        # Torch-profile engines cannot start without torch; refuse the switch
+        # up front (the current worker keeps running) instead of letting the
+        # worker subprocess die on the import and going through restore.
+        if engine_type in _TORCH_ENGINES and importlib.util.find_spec("torch") is None:
+            log.warning(f"ASR engine {engine_type} requires torch, which is not installed")
+            QMessageBox.warning(
+                self._app._panel,
+                t("error_title"),
+                t("error_engine_needs_torch"),
+            )
+            return
         device = settings.get("asr_device", self._asr_device)
         if engine_type == "sensevoice-onnx":
             # This backend runs on CPU by design. Without pinning it here the

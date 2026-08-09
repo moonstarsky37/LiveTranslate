@@ -176,7 +176,18 @@ def _has_silero_pkg() -> bool:
     return importlib.util.find_spec("silero_vad") is not None
 
 
+# The same file core/silero_onnx.py loads; the path is computed here
+# independently so model_manager keeps zero imports from livetranslate.core.
+_VENDORED_SILERO_ONNX = Path(__file__).resolve().parents[1] / "assets" / "silero_vad.onnx"
+
+
 def is_silero_cached() -> bool:
+    # The vendored ONNX model ships in the repo, so on a healthy checkout the
+    # VAD never counts as missing — regardless of torch or the silero-vad
+    # package. The package/hub checks remain for the torch (jit) profile and
+    # for a checkout with the asset stripped.
+    if _VENDORED_SILERO_ONNX.exists():
+        return True
     if _has_silero_pkg():
         return True
     torch_hub = MODELS_DIR / "torch" / "hub"

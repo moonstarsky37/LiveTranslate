@@ -249,6 +249,7 @@ override_hint: "When unchecked, uses server default or global config"
 loading_model: "Loading {name}...\nPlease wait."
 error_title: "Error"
 error_load_asr: "Failed to load ASR model:\n{error}"
+error_engine_needs_torch: "This ASR engine requires PyTorch, which is not installed.\n\nInstall it into the app environment and restart:\nNVIDIA GPU: pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126\nCPU only: pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu\n\nThe current engine keeps running."
 asr_restore_succeeded: "Previous ASR worker was restored."
 asr_restore_failed: "Failed to restore previous ASR worker: {error}"
 

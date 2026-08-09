@@ -454,3 +454,43 @@ def test_get_cache_entries_ignores_non_repo_cache_files(tmp_path, monkeypatch):
     (hub / "CACHEDIR.TAG").write_text("Signature", encoding="utf-8")
     (hub / ".locks").mkdir()
     assert mm.get_cache_entries() == []
+
+
+# --------------------------------------------------------------------------
+# Silero availability (torch-free profile)
+# --------------------------------------------------------------------------
+
+
+def test_silero_cached_via_vendored_onnx_alone(tmp_path, monkeypatch):
+    """The vendored assets/silero_vad.onnx satisfies the VAD requirement with
+    no silero-vad package and no torch-hub cache (the torch-free profile).
+    Patched on mm.cache — the module that reads these names."""
+    monkeypatch.setattr(mm.cache, "MODELS_DIR", tmp_path)
+    monkeypatch.setattr(mm.cache, "_has_silero_pkg", lambda: False)
+    assert mm.is_silero_cached() is True
+
+
+def test_silero_missing_when_vendored_asset_stripped(tmp_path, monkeypatch):
+    """Broken checkout (asset gone, no package, no hub cache) must still be
+    reported as missing, or a stripped install would crash at VAD load."""
+    monkeypatch.setattr(mm.cache, "MODELS_DIR", tmp_path)
+    monkeypatch.setattr(mm.cache, "_has_silero_pkg", lambda: False)
+    monkeypatch.setattr(mm.cache, "_VENDORED_SILERO_ONNX", tmp_path / "gone.onnx")
+    assert mm.is_silero_cached() is False
+
+
+def test_download_silero_is_a_noop_on_a_healthy_checkout(monkeypatch):
+    """With the vendored model in the repo, download_silero must return before
+    its `import torch` line. Drift fails loudly on any machine: CI has no
+    torch (ImportError), and locally torch.hub is boobytrapped."""
+    try:
+        import torch
+
+        monkeypatch.setattr(
+            torch.hub,
+            "load",
+            lambda *a, **k: pytest.fail("download_silero reached torch.hub"),
+        )
+    except ImportError:
+        pass
+    mm.download_silero()

@@ -20,8 +20,13 @@ apply_cache_env()
 
 import os
 
-# torch must be imported before PyQt6 to avoid DLL conflicts on Windows
-import torch  # noqa: F401
+# torch must be imported before PyQt6 to avoid DLL conflicts on Windows.
+# Optional since the torch-free profile: when torch is absent there is no
+# DLL order to protect; when present, this import must keep its position.
+try:
+    import torch  # noqa: F401
+except ImportError:
+    pass
 
 from livetranslate.core.audio_capture import AudioCapture
 from livetranslate.core.pipeline import TranslationPipeline

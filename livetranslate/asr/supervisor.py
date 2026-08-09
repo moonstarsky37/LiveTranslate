@@ -21,7 +21,14 @@ from livetranslate.model_manager import (
 
 # torch must be imported before PyQt6 to avoid DLL conflicts on Windows;
 # engine_switch (imported below) pulls in PyQt6, so torch must stay first.
-import torch
+# Optional since the torch-free profile: without torch there is no CUDA
+# worker either, so the guarded uses below degrade to no-ops.
+try:
+    import torch
+except ImportError:
+    torch = None
+
+_TORCH_AVAILABLE = torch is not None
 
 from livetranslate.asr.client import (
     ASRWorkerError,
@@ -198,7 +205,7 @@ class ASRSupervisor(EngineSwitchMixin):
         gpu_alloc_mb = 0.0
         gpu_reserved_mb = 0.0
         try:
-            if torch.cuda.is_available():
+            if _TORCH_AVAILABLE and torch.cuda.is_available():
                 gpu_alloc_mb = torch.cuda.memory_allocated() / 1024 / 1024
                 gpu_reserved_mb = torch.cuda.memory_reserved() / 1024 / 1024
         except Exception:
@@ -234,7 +241,7 @@ class ASRSupervisor(EngineSwitchMixin):
     def _release_memory_caches(self):
         gc.collect()
         try:
-            if torch.cuda.is_available():
+            if _TORCH_AVAILABLE and torch.cuda.is_available():
                 torch.cuda.empty_cache()
         except Exception:
             pass
