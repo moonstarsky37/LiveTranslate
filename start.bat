@@ -10,6 +10,15 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
 )
 
+if not exist ".venv\.sublume-ready" (
+    echo [ERROR] Virtual environment setup is incomplete.
+    echo A previous install was interrupted before it finished.
+    echo Please run install.bat again to finish installing and verifying dependencies.
+    echo.
+    pause
+    exit /b 1
+)
+
 echo Starting Sublume...
 .venv\Scripts\python.exe main.py
 if errorlevel 1 (

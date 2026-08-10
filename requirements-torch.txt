@@ -1,0 +1,29 @@
+# Sublume torch profile - the funasr and anime-whisper engines plus the
+# silero-vad jit package. Layered on top of requirements.txt; torch itself is
+# installed separately because the right wheel index (cpu / cu126 / cu128) is
+# only known at install time:
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126
+#   pip install -r requirements.txt
+#   pip install -r requirements-torch.txt
+
+funasr>=1.3.28
+omegaconf>=2.3.0
+kaldiio>=2.18.0
+torch-complex>=0.4.0
+soundfile>=0.12.1
+librosa>=0.10.0
+# Python 3.12 fix: without this floor the resolver backtracks to numba 0.53 /
+# llvmlite 0.36 (py<3.10 only) and the build explodes. numba>=0.59 has 3.12
+# wheels. (The matching numpy cap lives in requirements.txt.)
+numba>=0.59.0
+jaconv>=0.3.0
+jamo>=0.4.1
+hydra-core>=1.3.2
+six>=1.16.0
+sentencepiece>=0.2.0
+tiktoken>=0.7.0
+transformers>=4.40.0
+
+# Silero VAD jit model, bundled in the wheel (torch path). The torch-free
+# profile runs the same v6 weights from the vendored ONNX model instead.
+silero-vad>=5.0
