@@ -16,7 +16,7 @@
 
 ![Subtitle overlay](screenshot/overlay.png)
 
-Translucent, always-on-top, click-through — original and translated lines scroll in pairs, with ASR/translation latency and resource stats in the monitor bar.
+Translucent, always-on-top, click-through — original and translated lines scroll in pairs, with recognition/translation latency and resource stats in the monitor bar.
 For: watching live streams, videos and voice calls; drop it over any player and go.
 
 The overlay header comes in three layouts (Settings → Style), top to bottom: **Classic** (all controls), **Compact** (toggles in menu), **Minimal** (single row):
@@ -60,16 +60,16 @@ Audio is captured in 32ms chunks; Silero VAD segments complete utterances and fe
 ## Requirements
 
 - Windows 10 / 11 (a macOS version is in progress and not yet usable)
-- No preinstalled Python needed: `install.bat` fetches Python 3.12 through uv (3.13 is excluded due to dependency support)
-- **No GPU required**: the lightweight profile (default) has no torch — the SenseVoice ONNX engine transcribes in real time on a CPU, and the whole install is about 1GB
-- The full profile is only needed for the funasr / Anime-Whisper engines: torch + an NVIDIA GPU with CUDA 12.6 (Blackwell GPUs such as the RTX 50 series need CUDA 12.8), about 5GB installed
+- No preinstalled Python needed: `install.bat` fetches its own Python 3.12 (3.13 is not supported yet)
+- **No GPU required**: the default Lightweight install transcribes in real time on a CPU, and the whole install is about 1GB
+- The Full install is only needed for the FunASR / Anime-Whisper engines: an NVIDIA GPU with CUDA 12.6 (RTX 50 series needs CUDA 12.8), about 5GB
 - Network access to the translation API and HuggingFace (with a local translation model, network is only needed for the initial ASR model download)
 
 ## Install
 
 ### Portable build (no Python installation required)
 
-Download `Sublume-portable-*.zip` from [Releases](https://github.com/moonstarsky37/Sublume/releases), unzip, and run `start.bat`. The first run downloads a portable Python 3.12 and picks the profile by GPU: machines with an NVIDIA GPU get the full profile (with torch), everything else gets the lightweight torch-free profile (~1GB).
+Download `Sublume-portable-*.zip` from [Releases](https://github.com/moonstarsky37/Sublume/releases), unzip, and run `start.bat`. The first run downloads a portable Python 3.12 and picks by GPU: machines with an NVIDIA GPU get the Full install, everything else gets the Lightweight one (~1GB).
 
 ### From source
 
@@ -84,10 +84,10 @@ Run `install.bat`. The installer will:
 
 1. Detect [uv](https://docs.astral.sh/uv/), installing it via winget if missing (falling back to the official install script)
 2. Create the virtual environment from uv's own Python 3.12 — never the system Python (a broken or wrong-version venv is rebuilt automatically)
-3. Ask for a profile: **Lightweight** (no torch; SenseVoice ONNX engine, ~1GB) or **Full** (adds torch and the funasr / Anime-Whisper engines); with an NVIDIA GPU it picks CUDA 12.6 or 12.8 automatically
-4. Install and verify the dependencies (a completion marker is written only after `uv pip check` passes; an interrupted install is caught by `start.bat` and sent back to `install.bat` instead of launching on half an environment)
+3. Ask which install you want: **Lightweight** (default, ~1GB) or **Full** (adds what the FunASR / Anime-Whisper engines need); with an NVIDIA GPU it picks the matching CUDA version automatically
+4. Install and verify the dependencies (completion is only marked after verification passes; an interrupted install is caught at the next launch and sent back to the installer instead of running on half an environment)
 
-The Windows system proxy is applied automatically during installation. Run `start.bat` to launch, and `update.bat` later to update (it updates the right profile's dependencies based on whether torch is in the venv).
+The Windows system proxy is applied automatically during installation. Run `start.bat` to launch, and `update.bat` later to update (it updates the dependencies for whichever install you chose).
 
 <details>
 <summary>Manual install</summary>
@@ -113,11 +113,11 @@ pip install -r requirements-torch.txt
 
 ## First launch
 
-A setup wizard appears on first launch: pick the ASR engine (SenseVoice ONNX by default, a ~240MB download; the torch-based SenseVoice is ~1GB), then click Start Download. The main UI opens once downloads finish. A download proxy can be set in the wizard if the connection to HuggingFace is unreliable.
+A setup wizard appears on first launch: pick the recognition engine (SenseVoice ONNX by default, a ~240MB download; the other option needs an NVIDIA GPU and is ~1GB), then click Start Download. The main UI opens once downloads finish. A download proxy can be set in the wizard if the connection to HuggingFace is unreliable.
 
 ### Download speed and reliability
 
-- Download failures (500 / CAS errors) are usually transient HuggingFace-side problems; Retry resumes the download, and finished parts are not re-fetched.
+- Download failures (errors mentioning 500 or CAS) are usually transient HuggingFace-side problems; Retry resumes the download, and finished parts are not re-fetched.
 - HuggingFace rate-limits anonymous downloads. If they crawl, get a free token at [huggingface.co](https://huggingface.co/settings/tokens) and paste it into the HF Token field under Settings → Cache; or run `setx HF_TOKEN hf_yourtoken` in cmd and **restart the app** (the environment variable is picked up automatically).
 - The wizard's proxy setting only affects model downloads.
 - Closing the app mid-download is safe: settings are saved the moment you click Start Download, and the next launch resumes from the missing models instead of re-running the wizard.
@@ -137,7 +137,7 @@ With a local model the whole pipeline runs offline. Other services are configure
 
 ## Project layout
 
-`main.py` at the repository root is a thin entry shim; the actual code lives in the `sublume/` package. `python main.py`, `python -m sublume`, and `start.bat` are equivalent ways to launch.
+`main.py` at the repository root is just the launch entry point; the actual code lives in the `sublume/` package. `python main.py`, `python -m sublume`, and `start.bat` are equivalent ways to launch.
 
 ```
 sublume/
@@ -145,14 +145,14 @@ sublume/
 ├── paths.py            Runtime data paths (config.yaml, models/, logs/, transcripts/)
 ├── config/             Settings dataclass and SettingsStore (sole gateway to user_settings.json)
 ├── model_manager/      Model detection, download (HuggingFace), and cache management
-├── assets/             Vendored Silero VAD ONNX model (provenance and hash in its README)
+├── assets/             Bundled Silero VAD ONNX model (source notes in its README)
 ├── benchmark.py        Translation benchmark
 ├── core/               Audio capture (WASAPI loopback), Silero VAD (jit/ONNX), incremental segmentation, transcript writer
 ├── asr/                ASR backends, worker subprocess, remote ASR server and client
 ├── translation/        OpenAI-compatible translation client (streaming, JSON, context)
 ├── ui/                 Settings panel, dialogs, log window, overlay, OBS subtitle window
 └── i18n/               UI locales and changelogs
-funasr_nano/            Vendored model code
+funasr_nano/            Bundled model code
 ```
 
 ## Origin and differences
@@ -179,53 +179,9 @@ The pipeline flows through three kinds of execution units, all local: the GUI pr
 
 ![Sublume architecture diagram](screenshot/architecture-en.svg)
 
-<details>
-<summary>mermaid source (text version, for maintenance)</summary>
+Architecture details and diagram maintenance: [docs/architecture.md](docs/architecture.md).
 
-```mermaid
-flowchart TB
-    audio(["System audio (mic mix-in optional)"])
-
-    subgraph main["GUI process (Qt event loop)"]
-        direction TB
-        subgraph capthread["Capture thread"]
-            cap["Audio capture core/audio_capture.py<br/>WASAPI loopback · 32ms chunks"]
-            vad["Sentence segmentation core/vad_processor.py<br/>Silero VAD / energy-based"]
-        end
-        asrq["ASR queue thread core/pipeline.py<br/>incremental ASR + sentence splitting"]
-        cli["ASRClient asr/client.py<br/>worker lifecycle + timeouts"]
-        tr["Translation translation/translator.py<br/>async · streaming · JSON · context"]
-        ui1["Subtitle overlay ui/overlay/"]
-        ui2["OBS subtitle window<br/>ui/overlay/subtitle_window.py"]
-        tw["Transcripts core/transcript_writer.py"]
-        cp["Settings panel ui/control_panel/<br/>dialogs ui/dialogs/"]
-    end
-
-    subgraph wk["ASR worker subprocess asr/worker.py"]
-        eng["One recognition engine, loaded exclusively<br/>SenseVoice ONNX (default, starts in seconds on CPU)<br/>faster-whisper / FunASR / Anime-Whisper / remote ASR"]
-    end
-
-    llm[("OpenAI-compatible API<br/>cloud or local llama.cpp / Ollama / vLLM")]
-    hub[("HuggingFace Hub<br/>(model downloads only)")]
-
-    st["Settings config/store.py<br/>user_settings.json + config.yaml"]
-    mm["Model management model_manager/<br/>registry · cache · download"]
-
-    audio --> cap --> vad -->|"complete utterance"| asrq --> cli
-    cli <-->|"multiprocessing.Pipe"| eng
-    cli -->|"recognized text"| tr
-    tr <-->|"HTTPS"| llm
-    tr --> ui1 & ui2 & tw
-    cp -.->|"read/write settings"| st
-    cp -.->|"triggers downloads when models are missing"| mm
-    mm <-->|"download"| hub
-```
-
-SVG regen: `uv run archviz docs/architecture.en.json --name architecture-en -o screenshot` (archviz is a maintainer-local tool); when the architecture changes, update the JSON and the mermaid text above together.
-
-</details>
-
-Cross-thread UI updates always go through Qt signals; settings I/O goes only through `SettingsStore` (atomic writes + load-time migrations).
+Settings are stored so that even a mid-write crash cannot corrupt them, and settings from older versions upgrade automatically.
 
 ## Acknowledgements
 
