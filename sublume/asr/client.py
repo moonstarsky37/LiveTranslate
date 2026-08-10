@@ -35,7 +35,13 @@ class ASRClient:
     def __init__(
         self,
         config: dict,
-        ready_timeout: float = 180.0,
+        # Cold-loading a heavyweight engine takes minutes, not seconds: a
+        # first-run Anime-Whisper (539 safetensors shards -> CUDA) measured
+        # 2m04s in the field and was killed by the old 180s deadline 0.4s
+        # after the model finished loading. A dead worker is still detected
+        # fast (the pipe poll sees the process exit); this deadline only
+        # bounds a genuinely hung load.
+        ready_timeout: float = 600.0,
         request_timeout: float = 120.0,
         shutdown_timeout: float = 5.0,
     ):

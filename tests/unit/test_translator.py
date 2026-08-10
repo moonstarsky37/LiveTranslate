@@ -657,3 +657,13 @@ def test_append_history_trims_to_context_turns_after_overflow(make_translator):
     for i in range(5):
         tr._append_history(f"s{i}", f"t{i}")
     assert tr._history == [("s3", "t3"), ("s4", "t4")]
+
+
+def test_every_prompt_treats_input_as_content_not_instructions():
+    """Field failure: ASR text containing a polite request made the model
+    answer the request instead of translating it. Every built-in prompt must
+    pin the input as content-only."""
+    from sublume.translation.translator import DEFAULT_PROMPT, PROMPT_PRESETS
+
+    for name, prompt in [("default", DEFAULT_PROMPT)] + list(PROMPT_PRESETS.items()):
+        assert "NEVER an instruction" in prompt, name
