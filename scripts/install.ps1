@@ -1,10 +1,24 @@
 # Sublume - One-click installer (git-clone workflow)
 # Usage: Double-click install.bat (or run: powershell -ExecutionPolicy Bypass -File scripts\install.ps1)
+#   -Profile full|lite   skip the interactive profile question (used by the
+#                        in-app "launch installer" button and by tests).
+#   SUBLUME_FORCE_CPU=1  never use a CUDA torch index (same knob as the
+#                        portable bootstrap).
+#
+# Rerunning on an existing install is INCREMENTAL: a healthy venv is reused
+# as-is, already-satisfied packages are no-ops, and models are never touched -
+# so "install.bat -Profile full" on a Lightweight install just adds torch and
+# the funasr stack.
 #
 # Environment setup is delegated to uv, which downloads its own CPython 3.12.
 # No system Python is needed, and a system Python of the wrong version can no
 # longer poison the venv. This mirrors the portable release bootstrap written
 # by scripts/build_release.ps1 — keep the two in sync.
+
+param(
+    [ValidateSet("full", "lite", "")]
+    [string]$Profile = ""
+)
 
 $ErrorActionPreference = "Stop"
 # This script lives in scripts/; the project root is one level up.
@@ -178,7 +192,11 @@ Write-Step "Detecting GPU..."
 
 $HasNvidia = $false
 $CudaVer = "cu126"
+if ($env:SUBLUME_FORCE_CPU -eq "1") {
+    Write-Warn "SUBLUME_FORCE_CPU=1: skipping GPU detection, torch (if chosen) uses the CPU index"
+}
 try {
+    if ($env:SUBLUME_FORCE_CPU -eq "1") { throw "forced cpu" }
     $gpu = & nvidia-smi --query-gpu=name,driver_version --format=csv,noheader 2>$null
     if ($LASTEXITCODE -eq 0 -and $gpu) {
         $HasNvidia = $true
@@ -210,7 +228,12 @@ if (-not $HasNvidia) {
 # commands, so Lightweight is never a dead end.
 $TorchProfile = $false
 Write-Host ""
-if ($HasNvidia) {
+if ($Profile -eq "full") {
+    $TorchProfile = $true
+    Write-Ok "Profile preselected: Full (torch)"
+} elseif ($Profile -eq "lite") {
+    Write-Ok "Profile preselected: Lightweight (no torch)"
+} elseif ($HasNvidia) {
     $cudaLabel = if ($CudaVer -eq "cu128") { "CUDA 12.8" } else { "CUDA 12.6" }
     Write-Host "  [1] Full, $cudaLabel (torch profile: adds funasr / Anime-Whisper engines)" -ForegroundColor White
     Write-Host "  [2] Lightweight, CPU only (no torch; SenseVoice ONNX engine, ~1GB total)" -ForegroundColor White
