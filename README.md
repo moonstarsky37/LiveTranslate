@@ -60,16 +60,16 @@ ASR 引擎、VAD 切分、翻譯模型、字幕樣式、效能測試、模型快
 ## 系統需求
 
 - Windows 10 / 11（macOS 版開發中，目前尚不可用）
-- 不需預先安裝 Python：`install.bat` 會經 uv 自動取得 Python 3.12（3.13 因相依套件尚未支援而排除）
-- **顯示卡非必需**：輕量 profile（預設）不含 torch，SenseVoice ONNX 引擎純 CPU 即時辨識，整套安裝約 1GB
-- 要用 funasr / Anime-Whisper 引擎才需要完整 profile：torch + NVIDIA 顯示卡與 CUDA 12.6（RTX 50 系列等 Blackwell 架構需 CUDA 12.8），安裝約 5GB
+- 不需預先安裝 Python：`install.bat` 會自動取得專用的 Python 3.12（暫不支援 3.13）
+- **顯示卡非必需**：預設的「輕量」安裝純 CPU 即可即時辨識，整套約 1GB
+- 要用 FunASR / Anime-Whisper 引擎才需要「完整」安裝：NVIDIA 顯示卡與 CUDA 12.6（RTX 50 系列需 CUDA 12.8），約 5GB
 - 網路需能連上翻譯 API 與 HuggingFace（翻譯採用本地模型時，僅初次下載 ASR 模型需要網路）
 
 ## 安裝
 
 ### 免安裝版（不需安裝 Python）
 
-從 [Releases](https://github.com/moonstarsky37/Sublume/releases) 下載 `Sublume-portable-*.zip`，解壓縮後執行 `start.bat`。首次執行會自動下載可攜版 Python 3.12，並依顯示卡選擇 profile：有 NVIDIA 顯示卡裝完整 profile（含 torch），沒有則自動採輕量 profile（無 torch，約 1GB）。
+從 [Releases](https://github.com/moonstarsky37/Sublume/releases) 下載 `Sublume-portable-*.zip`，解壓縮後執行 `start.bat`。首次執行會自動下載可攜版 Python 3.12，並依顯示卡選擇：有 NVIDIA 顯示卡裝「完整」版，沒有則自動採「輕量」版（約 1GB）。
 
 ### 從原始碼安裝
 
@@ -84,10 +84,10 @@ cd Sublume
 
 1. 偵測 [uv](https://docs.astral.sh/uv/)，未安裝時經 winget 自動安裝（無 winget 則改用官方安裝腳本）
 2. 以 uv 專屬的 Python 3.12 建立虛擬環境（既有環境損壞或版本不符時會自動重建），完全不使用系統 Python
-3. 選擇 profile：**輕量**（無 torch，SenseVoice ONNX 引擎，約 1GB）或 **完整**（加裝 torch 與 funasr / Anime-Whisper 引擎）；偵測到 NVIDIA 顯示卡時自動判斷 CUDA 12.6 或 12.8
-4. 安裝相依套件並驗證（`uv pip check` 通過才寫入完成標記；中斷的安裝會被 `start.bat` 擋下，要求重跑 `install.bat`，不會拿半套環境開跑）
+3. 選擇安裝方案：**輕量**（預設，約 1GB）或 **完整**（加裝 FunASR / Anime-Whisper 引擎需要的元件）；偵測到 NVIDIA 顯示卡時自動選擇對應的 CUDA 版本
+4. 安裝相依套件並驗證完整性（通過才標記完成；中斷的安裝下次啟動會被擋下、要求重跑，不會拿半套環境開跑）
 
-安裝過程會自動套用 Windows 系統 Proxy 設定。完成後執行 `start.bat` 啟動；日後執行 `update.bat` 即可更新（會依 venv 內是否有 torch 自動更新對應 profile 的相依套件）。
+安裝過程會自動套用 Windows 系統 Proxy 設定。完成後執行 `start.bat` 啟動；日後執行 `update.bat` 即可更新（會自動更新你所選安裝方案的相依套件）。
 
 <details>
 <summary>手動安裝</summary>
@@ -113,11 +113,11 @@ pip install -r requirements-torch.txt
 
 ## 首次啟動
 
-首次啟動會出現設定精靈：先選辨識引擎（預設 SenseVoice ONNX，下載約 240MB；torch 版 SenseVoice 約 1GB），按「開始下載」後抓取模型，完成後進入主介面。若連線 HuggingFace 不穩定，可於精靈內填入下載 Proxy。
+首次啟動會出現設定精靈：先選辨識引擎（預設 SenseVoice ONNX，下載約 240MB；另一選項需 NVIDIA 顯示卡，約 1GB），按「開始下載」後抓取模型，完成後進入主介面。若連線 HuggingFace 不穩定，可於精靈內填入下載 Proxy。
 
 ### 模型下載的速度與穩定性
 
-- 下載失敗（如 500 / CAS 錯誤）多為 HuggingFace 端暫時性故障，按「重試」即可續傳；已下載的部分不會重來。
+- 下載失敗（出現 500 或 CAS 字樣的錯誤）多為 HuggingFace 端暫時性故障，按「重試」即可續傳；已下載的部分不會重來。
 - HuggingFace 對匿名下載有限流。若下載緩慢，可至 [huggingface.co](https://huggingface.co/settings/tokens) 免費申請 token，填入「設定 → 快取」的 HF Token 欄位；或在 cmd 執行 `setx HF_TOKEN hf_你的token` 後**重新啟動程式**（程式會自動讀取環境變數）。
 - 精靈中的 Proxy 設定只影響模型下載；台灣一般網路環境選「不使用 Proxy」即可。
 - 中途關閉程式不會壞事：設定已在按下「開始下載」當下寫入，下次啟動會直接從缺少的模型續傳，不會重跑精靈。
@@ -137,7 +137,7 @@ pip install -r requirements-torch.txt
 
 ## 專案結構
 
-根目錄的 `main.py` 為入口 shim，實際程式碼在 `sublume/` 套件內。`python main.py`、`python -m sublume`、`start.bat` 三種啟動方式等價。
+根目錄的 `main.py` 只是啟動入口，實際程式碼在 `sublume/` 套件內。`python main.py`、`python -m sublume`、`start.bat` 三種啟動方式等價。
 
 ```
 sublume/
@@ -145,14 +145,14 @@ sublume/
 ├── paths.py            執行期資料路徑（config.yaml、models/、logs/、transcripts/）
 ├── config/             Settings dataclass 與 SettingsStore（user_settings.json 唯一出入口）
 ├── model_manager/      模型偵測、下載（HuggingFace）與快取管理
-├── assets/             vendored Silero VAD ONNX 模型（來源與雜湊見其 README）
+├── assets/             內建 Silero VAD ONNX 模型（來源說明見其 README）
 ├── benchmark.py        翻譯效能測試
 ├── core/               音訊擷取（WASAPI loopback）、Silero VAD（jit／ONNX）、增量斷句、逐字稿寫入
 ├── asr/                各 ASR 後端、worker 子行程、遠端 ASR 伺服器與用戶端
 ├── translation/        OpenAI 相容翻譯用戶端（串流、JSON、上下文）
 ├── ui/                 設定面板、對話框、日誌視窗、字幕浮窗與 OBS 字幕視窗
 └── i18n/               介面語系檔與更新日誌
-funasr_nano/            vendored 模型程式碼
+funasr_nano/            內建模型程式碼
 ```
 
 ## 源起與差異
@@ -179,53 +179,9 @@ Sublume 的前身是 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathD
 
 ![Sublume 架構圖](screenshot/architecture-zh.svg)
 
-<details>
-<summary>mermaid 原始碼（文字版，維護用）</summary>
+架構細節與圖的維護方式見 [docs/architecture.md](docs/architecture.md)。
 
-```mermaid
-flowchart TB
-    audio(["系統音訊（可混入麥克風）"])
-
-    subgraph main["GUI 主行程（Qt 事件圈）"]
-        direction TB
-        subgraph capthread["擷取執行緒"]
-            cap["音訊擷取 core/audio_capture.py<br/>WASAPI loopback·32ms"]
-            vad["語句切分 core/vad_processor.py<br/>Silero VAD／能量式"]
-        end
-        asrq["ASR 佇列執行緒 core/pipeline.py<br/>增量辨識與斷句"]
-        cli["ASRClient asr/client.py<br/>worker 生命週期與逾時"]
-        tr["翻譯 translation/translator.py<br/>非同步·串流·JSON·上下文"]
-        ui1["字幕浮窗 ui/overlay/"]
-        ui2["OBS 字幕視窗<br/>ui/overlay/subtitle_window.py"]
-        tw["逐字稿 core/transcript_writer.py"]
-        cp["設定面板 ui/control_panel/<br/>對話框 ui/dialogs/"]
-    end
-
-    subgraph wk["ASR worker 子行程 asr/worker.py"]
-        eng["單一辨識引擎，擇一載入<br/>SenseVoice ONNX（預設，CPU 秒開）<br/>faster-whisper／FunASR／Anime-Whisper／遠端 ASR"]
-    end
-
-    llm[("OpenAI 相容 API<br/>雲端或本機 llama.cpp／Ollama／vLLM")]
-    hub[("HuggingFace Hub<br/>（僅下載模型時）")]
-
-    st["設定 config/store.py<br/>user_settings.json ＋ config.yaml"]
-    mm["模型管理 model_manager/<br/>registry·cache·download"]
-
-    audio --> cap --> vad -->|"完整語句段"| asrq --> cli
-    cli <-->|"multiprocessing.Pipe"| eng
-    cli -->|"辨識文字"| tr
-    tr <-->|"HTTPS"| llm
-    tr --> ui1 & ui2 & tw
-    cp -.->|"讀寫設定"| st
-    cp -.->|"缺模型時觸發下載"| mm
-    mm <-->|"下載"| hub
-```
-
-SVG 重產：`uv run archviz docs/architecture.zh.json --name architecture-zh -o screenshot`（archviz 為維護者本機工具）；改架構時請同步更新 JSON 與上方 mermaid 文字版。
-
-</details>
-
-跨執行緒的 UI 更新一律走 Qt signal；設定檔讀寫只經過 `SettingsStore`（原子寫入＋載入時遷移）。
+設定檔的儲存即使程式中途當掉也不會損毀，舊版設定檔會自動升級。
 
 ## 致謝
 
