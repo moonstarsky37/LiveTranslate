@@ -294,6 +294,32 @@ def main():
         subwin_was_enabled,
     )
 
+    if sys.platform == "darwin":
+        # The system mix reaches us through a user-installed virtual device;
+        # without one the device list is silently empty, so guide up front.
+        from sublume.core.capture.macos import has_blackhole
+
+        if not has_blackhole():
+            QMessageBox.information(
+                None, t("mac_blackhole_title"), t("mac_blackhole_body")
+            )
+
+        # Denied mic permission looks like endless silence with no error
+        # (see capture/macos.py); surface the backend's one-time hint as a
+        # tray notification from the Qt thread.
+        def _check_permission_hint():
+            cap = getattr(live_trans, "_audio", None)
+            if cap is not None and getattr(cap, "permission_hint_active", False):
+                tray_ns.hint_timer.stop()
+                tray_ns.tray.showMessage(
+                    t("mac_mic_permission_title"), t("mac_mic_permission_body")
+                )
+
+        tray_ns.hint_timer = QTimer()
+        tray_ns.hint_timer.setInterval(2000)
+        tray_ns.hint_timer.timeout.connect(_check_permission_hint)
+        tray_ns.hint_timer.start()
+
     QTimer.singleShot(500, tray_ns.on_start)
 
     signal.signal(signal.SIGINT, lambda *_: tray_ns.on_quit())

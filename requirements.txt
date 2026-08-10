@@ -16,8 +16,13 @@ psutil>=5.9.0
 # Sentence segmentation for incremental ASR (core/segmentation.py)
 pysbd>=0.3.4
 
-# Audio capture (Windows WASAPI loopback)
-PyAudioWPatch>=0.2.12
+# Audio capture - one backend per platform (sublume/core/capture/)
+PyAudioWPatch>=0.2.12; sys_platform == 'win32'
+# macOS: BlackHole virtual device via sounddevice, plus pyobjc for the
+# overlay click-through (NSWindow.ignoresMouseEvents)
+sounddevice>=0.5; sys_platform == 'darwin'
+pyobjc-core>=10; sys_platform == 'darwin'
+pyobjc-framework-Cocoa>=10; sys_platform == 'darwin'
 
 # ASR engines that need no torch
 # faster-whisper runs on ctranslate2; no unconditional torch dependency.

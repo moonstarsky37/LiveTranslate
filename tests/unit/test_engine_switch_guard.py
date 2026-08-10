@@ -29,6 +29,8 @@ import sublume.asr.engine_switch as es  # noqa: E402
 
 
 def test_hint_mode_is_installer_when_install_ps1_exists(tmp_path):
+    if sys.platform == "darwin":
+        pytest.skip("darwin always resolves to pip (Lightweight-only installer)")
     (tmp_path / "scripts").mkdir()
     (tmp_path / "scripts" / "install.ps1").write_text("# stub", encoding="utf-8")
     assert es._torch_install_hint_mode(tmp_path) == "installer"
@@ -39,9 +41,18 @@ def test_hint_mode_is_pip_for_a_portable_tree(tmp_path):
     assert es._torch_install_hint_mode(tmp_path) == "pip"
 
 
-def test_repo_checkout_resolves_to_installer_mode():
-    """This repo IS a source checkout, so the default-root call must say so."""
-    assert es._torch_install_hint_mode() == "installer"
+def test_repo_checkout_resolves_per_platform():
+    """A source checkout offers the installer on Windows; the macOS installer
+    is Lightweight-only, so macOS stays on pip guidance even in a checkout."""
+    expected = "pip" if sys.platform == "darwin" else "installer"
+    assert es._torch_install_hint_mode() == expected
+
+
+def test_darwin_always_gets_pip_guidance(monkeypatch, tmp_path):
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts" / "install.ps1").write_text("# stub", encoding="utf-8")
+    monkeypatch.setattr(es.sys, "platform", "darwin")
+    assert es._torch_install_hint_mode(tmp_path) == "pip"
 
 
 # --------------------------------------------------------------------------

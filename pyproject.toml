@@ -64,6 +64,11 @@ module = [
     "sublume.ui.dialogs.*",
     "sublume.ui.changelog",
     "sublume.core.silero_onnx",
+    # capture package: __init__/base/macos are new and type-check; windows.py
+    # is the legacy monolith moved verbatim and stays under the core.* baseline.
+    "sublume.core.capture",
+    "sublume.core.capture.base",
+    "sublume.core.capture.macos",
 ]
 ignore_errors = false
 
