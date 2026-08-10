@@ -33,3 +33,8 @@ start-local.cmd
 CLAUDE.md
 docs-local/
 .pytest_cache/
+
+# Transcript outputs (current sessions write to transcripts/, but a legacy build
+# wrote to the repo root - keep both prefixes out of accidental commits)
+livetrans_*.txt
+sublume_*.txt
