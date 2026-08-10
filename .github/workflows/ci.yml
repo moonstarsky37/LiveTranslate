@@ -59,4 +59,51 @@ jobs:
       - name: Silero ONNX tests
         # importorskip-guarded elsewhere; in this venv onnxruntime and PyQt6
         # exist, so the wrapper-contract and guard-dialog tests actually run.
-        run: .venv/Scripts/python.exe -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py -q -m "not local"
+        run: .venv/Scripts/python.exe -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py -q -m "not local"
+
+  torch-free-mac:
+    # The macOS Lightweight profile must stay installable and importable:
+    # platform markers pull the mac trio (sounddevice + pyobjc) and drop
+    # PyAudioWPatch, the capture shim must dispatch to the mac backend on a
+    # machine with no BlackHole (empty device list, no crash), and the shell
+    # scripts must be exactly what a user's /bin/bash (Apple bash 3.2) parses.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell script guards (bash 3.2 parse, shellcheck, LF, exec bit)
+        run: |
+          for f in install.sh start.sh update.sh; do
+            head -1 "$f" | grep -q '^#!/usr/bin/env bash' || { echo "$f: bad shebang"; exit 1; }
+            grep -q $'\r' "$f" && { echo "$f: CRLF line endings"; exit 1; }
+            [ -x "$f" ] || { echo "$f: missing executable bit"; exit 1; }
+            /bin/bash -n "$f" || { echo "$f: does not parse under Apple bash 3.2"; exit 1; }
+          done
+          brew install shellcheck
+          shellcheck --shell=bash install.sh start.sh update.sh
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install base profile (no torch)
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -r requirements.txt
+          uv pip install --python .venv/bin/python pytest
+
+      - name: Assert torch is absent and the mac capture trio is present
+        run: |
+          .venv/bin/python -c "import importlib.util, sys; sys.exit(1 if importlib.util.find_spec('torch') else 0)"
+          .venv/bin/python -c "import sounddevice, objc"
+          .venv/bin/python -c "import importlib.util, sys; sys.exit(1 if importlib.util.find_spec('pyaudiowpatch') else 0)"
+
+      - name: Import smoke + ONNX VAD path
+        run: .venv/bin/python scripts/smoke_torch_free.py
+
+      - name: Capture dispatch resolves to the mac backend, device query is crash-safe
+        run: .venv/bin/python -c "from sublume.core.audio_capture import AudioCapture, list_output_devices; import sublume.core.capture.macos as mac; assert AudioCapture is mac.AudioCapture, 'dispatch picked the wrong backend'; print('sources on this runner:', list_output_devices()); print('has_blackhole:', mac.has_blackhole())"
+
+      - name: Unit tests (onnx + capture + guard)
+        run: .venv/bin/python -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py -q -m "not local"

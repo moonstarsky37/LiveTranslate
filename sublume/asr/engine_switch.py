@@ -9,6 +9,7 @@ exactly as before the split.
 import importlib.util
 import logging
 import subprocess
+import sys
 import threading
 from pathlib import Path
 
@@ -42,9 +43,13 @@ _TORCH_ENGINES = {"funasr", "anime-whisper"}
 def _torch_install_hint_mode(root: Path = ROOT) -> str:
     """How to guide a torch-less user to the torch profile.
 
-    A git-clone install ships scripts/install.ps1, which can add the torch
-    profile incrementally ("installer"); the portable zip drops scripts/, so
-    there the guidance stays manual pip commands ("pip")."""
+    A git-clone install on Windows ships scripts/install.ps1, which can add
+    the torch profile incrementally ("installer"); the portable zip drops
+    scripts/, so there the guidance stays manual pip commands ("pip"). The
+    macOS installer is Lightweight-only for now — no Full mode to launch —
+    so macOS always gets "pip" even though install.ps1 exists in a checkout."""
+    if sys.platform == "darwin":
+        return "pip"
     return "installer" if (root / "scripts" / "install.ps1").exists() else "pip"
 
 
