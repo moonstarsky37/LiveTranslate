@@ -6,10 +6,19 @@ verbatim) and macos.py (BlackHole input device via sounddevice). See
 capture/base.py for the shared contract.
 """
 
-from sublume.core.capture import (
-    AudioCapture,
-    list_input_devices,
-    list_output_devices,
-)
+import sys
+
+if sys.platform == "darwin":
+    from sublume.core.capture.macos import (
+        AudioCapture,
+        list_input_devices,
+        list_output_devices,
+    )
+else:
+    from sublume.core.capture.windows import (
+        AudioCapture,
+        list_input_devices,
+        list_output_devices,
+    )
 
 __all__ = ["AudioCapture", "list_input_devices", "list_output_devices"]

@@ -1,25 +1,11 @@
-"""Audio capture backends, selected by platform at import time.
+"""Audio capture backends.
 
-Windows captures the system mix directly via WASAPI loopback
-(pyaudiowpatch); macOS reads a virtual input device (BlackHole) via
-sounddevice. Both expose the same surface — see base.py for the contract.
-Callers keep importing from sublume.core.audio_capture, which re-exports
-whatever this package selected.
+windows.py — WASAPI loopback via pyaudiowpatch (the pre-split module,
+moved verbatim). macos.py — BlackHole virtual input device via sounddevice.
+See base.py for the shared contract.
+
+This package deliberately imports NOTHING at package level: importing
+sublume.core.capture.macos must not drag in the Windows backend (whose
+pyaudiowpatch dependency does not exist in minimal environments). Platform
+dispatch lives in sublume.core.audio_capture.
 """
-
-import sys
-
-if sys.platform == "darwin":
-    from sublume.core.capture.macos import (
-        AudioCapture,
-        list_input_devices,
-        list_output_devices,
-    )
-else:
-    from sublume.core.capture.windows import (
-        AudioCapture,
-        list_input_devices,
-        list_output_devices,
-    )
-
-__all__ = ["AudioCapture", "list_input_devices", "list_output_devices"]

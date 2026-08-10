@@ -88,8 +88,10 @@ jobs:
           python-version: "3.12"
 
       - name: Install base profile (no torch)
+        # --clear: setup-uv's python-version input pre-creates .venv on the
+        # macOS runner, and a bare `uv venv` refuses to overwrite it.
         run: |
-          uv venv --python 3.12 .venv
+          uv venv --python 3.12 --clear .venv
           uv pip install --python .venv/bin/python -r requirements.txt
           uv pip install --python .venv/bin/python pytest
 

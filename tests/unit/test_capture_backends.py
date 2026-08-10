@@ -90,7 +90,11 @@ def test_silence_watchdog_raises_the_permission_hint(monkeypatch):
 
 
 def test_shim_dispatches_by_platform():
-    """The stable import path resolves to the platform's backend."""
+    """The stable import path resolves to the platform's backend. On
+    non-darwin the shim pulls the Windows backend, which needs
+    pyaudiowpatch — absent in the minimal CI env, so skip there."""
+    if sys.platform != "darwin":
+        pytest.importorskip("pyaudiowpatch")
     from sublume.core import audio_capture
 
     if sys.platform == "darwin":
