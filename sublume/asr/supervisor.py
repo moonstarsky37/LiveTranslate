@@ -305,6 +305,9 @@ class ASRSupervisor(EngineSwitchMixin):
             log.error(f"ASR worker (re)start failed: {e}", exc_info=True)
             self._set_asr_status("unavailable")
             return False
+        # Before the state is snapshotted below: a worker that died because CUDA
+        # fell over comes back on CPU, and this is the path that restarts it.
+        self._resolve_ready_device_label(client, state)
         stale = None
         with self._asr_lock:
             if self._asr_generation != expected_gen or not self._app._running:
@@ -387,7 +390,7 @@ class ASRSupervisor(EngineSwitchMixin):
         if self._start_worker_from_state(state, gen):
             log.info(
                 f"ASR worker auto-restarted: {state.get('type')} on "
-                f"{state.get('device')}"
+                f"{state.get('device_label', state.get('device'))}"
             )
         elif self._asr is None and self._app._overlay:
             self._app._overlay.update_asr_device("ASR unavailable")
@@ -453,7 +456,10 @@ class ASRSupervisor(EngineSwitchMixin):
             with self._asr_lock:
                 self._asr_recycling = False
         if started:
-            log.info(f"ASR worker recycled: {state.get('type')} on {state.get('device')}")
+            log.info(
+                f"ASR worker recycled: {state.get('type')} on "
+                f"{state.get('device_label', state.get('device'))}"
+            )
         else:
             log.error("ASR worker recycle failed to restart")
             if self._asr is None and self._app._overlay:

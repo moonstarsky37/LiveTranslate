@@ -38,6 +38,11 @@ class AnimeWhisperEngine:
         self.language = "ja"
         log.info(f"AnimeWhisper loaded from {model} on {device}")
 
+    @property
+    def device(self):
+        """The device the pipeline actually runs on (CUDA falls back to cpu above)."""
+        return self._device
+
     def set_language(self, language: str):
         # Model is Japanese-only; ignore attempts to change
         if language not in ("auto", "ja", None):

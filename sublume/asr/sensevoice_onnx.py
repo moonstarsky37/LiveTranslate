@@ -94,6 +94,11 @@ class SenseVoiceONNXEngine:
         self._recognizer = None
         self._build()
 
+    @property
+    def device(self) -> str:
+        """The sherpa-onnx execution provider this recognizer runs on."""
+        return self._provider
+
     def _build(self):
         """(Re)create the recognizer. sherpa-onnx takes the language hint at
         construction time, so a language change means building again — which

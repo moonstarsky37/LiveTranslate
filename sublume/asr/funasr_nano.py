@@ -57,7 +57,18 @@ class FunASRNanoEngine:
         finally:
             os.chdir(prev_cwd)
         self.language = None
-        log.info(f"{engine_type} loaded: {model_name} on {device} (hub={hub})")
+        log.info(
+            f"{engine_type} loaded: {model_name} on "
+            f"{self._model.kwargs.get('device', device)} (hub={hub})"
+        )
+
+    @property
+    def device(self):
+        """The device FunASR actually loaded on: AutoModel rewrites kwargs when a
+        CUDA request falls back to CPU, so read it back live. None once unloaded."""
+        if self._model is None:
+            return None
+        return self._model.kwargs.get("device")
 
     def set_language(self, language: str):
         old = self.language
@@ -66,6 +77,11 @@ class FunASRNanoEngine:
 
     def to_device(self, device: str):
         self._model.model.to(device)
+        # Mirror sensevoice._update_runtime_kwargs: AutoModel keeps the live device
+        # in kwargs and the device property reads it back from there, so a move that
+        # skipped this write-back would leave the property reporting the load-time
+        # device. No caller reaches this path today; keep it honest anyway.
+        self._model.kwargs["device"] = device
         log.info(f"Fun-ASR-Nano moved to {device}")
 
     def unload(self):

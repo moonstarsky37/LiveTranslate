@@ -51,6 +51,34 @@ def _parse_device(device: str) -> tuple[str, int]:
     return device, 0
 
 
+def _ready_payload(engine, config: dict) -> dict:
+    """Build the ready report, with the device the engine ACTUALLY loaded on.
+
+    A CPU-only torch build silently turns a "cuda" request into cpu, and the
+    logs/monitor bar would otherwise keep repeating the config value. Only a
+    real fallback changes the label: an engine reporting the same device at a
+    different granularity (bare "cuda" vs "cuda:0") keeps the config format.
+
+    The probe is guarded against Exception, comparison included (getattr only
+    swallows AttributeError, so a raising property or an unparsable device
+    string would escape): a loaded engine is never failed by label resolution.
+    The reported value is stringified because this payload crosses the pipe —
+    an engine handing back some exotic device object must not break the send.
+    """
+    config_device = config.get("device")
+    actual = None
+    try:
+        actual = getattr(engine, "device", None)
+        same = actual is None or _parse_device(actual) == _parse_device(config_device)
+    except Exception:
+        same = True
+    return {
+        "engine_type": config.get("engine_type"),
+        "display_name": config.get("display_name"),
+        "device": config_device if same else str(actual),
+    }
+
+
 def _load_engine(config: dict):
     from sublume.model_manager import MODELS_DIR, apply_cache_env
 
@@ -187,17 +215,7 @@ def worker_main(conn, config: dict):
         )
         engine = _load_engine(config)
         _warmup(engine)
-        conn.send(
-            _ok_response(
-                None,
-                "ready",
-                {
-                    "engine_type": config.get("engine_type"),
-                    "display_name": config.get("display_name"),
-                    "device": config.get("device"),
-                },
-            )
-        )
+        conn.send(_ok_response(None, "ready", _ready_payload(engine, config)))
     except BaseException as exc:
         log.error(f"ASR worker load failed: {exc}", exc_info=True)
         try:
