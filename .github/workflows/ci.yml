@@ -28,3 +28,35 @@ jobs:
         run: >-
           uv run --with pytest --with pyyaml --with openai --with httpx --with pysbd --with numpy
           python -m pytest tests/ -q -m "not local"
+
+  torch-free:
+    # The base profile must stay installable and runnable without torch:
+    # install requirements.txt into a clean venv, prove no torch sneaks in,
+    # import every GUI-process module, and run the VAD on the vendored ONNX
+    # model (in-repo, so no model download happens here).
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install base profile (no torch)
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/Scripts/python.exe -r requirements.txt
+          uv pip install --python .venv/Scripts/python.exe pytest
+
+      - name: Assert torch is absent
+        run: |
+          .venv/Scripts/python.exe -c "import importlib.util, sys; sys.exit(1 if importlib.util.find_spec('torch') else 0)"
+
+      - name: Import smoke + ONNX VAD path
+        run: .venv/Scripts/python.exe scripts/smoke_torch_free.py
+
+      - name: Silero ONNX tests
+        # importorskip-guarded elsewhere; in this venv onnxruntime exists, so
+        # the wrapper-contract tests actually run.
+        run: .venv/Scripts/python.exe -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py -q -m "not local"
