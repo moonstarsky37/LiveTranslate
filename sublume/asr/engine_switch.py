@@ -8,8 +8,11 @@ exactly as before the split.
 
 import importlib.util
 import logging
+import subprocess
 import threading
 from pathlib import Path
+
+from sublume.paths import ROOT
 
 from sublume.model_manager import (
     ASR_DISPLAY_NAMES,
@@ -23,7 +26,7 @@ from sublume.model_manager import (
 )
 
 from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QDialog, QMessageBox
+from PyQt6.QtWidgets import QApplication, QDialog, QMessageBox
 
 from sublume.asr.client import ASRClient
 from sublume.ui.dialogs import ModelDownloadDialog, _ModelLoadDialog
@@ -36,8 +39,61 @@ log = logging.getLogger("Sublume")
 _TORCH_ENGINES = {"funasr", "anime-whisper"}
 
 
+def _torch_install_hint_mode(root: Path = ROOT) -> str:
+    """How to guide a torch-less user to the torch profile.
+
+    A git-clone install ships scripts/install.ps1, which can add the torch
+    profile incrementally ("installer"); the portable zip drops scripts/, so
+    there the guidance stays manual pip commands ("pip")."""
+    return "installer" if (root / "scripts" / "install.ps1").exists() else "pip"
+
+
+def _launch_installer(root: Path = ROOT) -> None:
+    """Open install.bat in its own console, preselecting the Full profile.
+
+    Started via `cmd /c start` so the installer window outlives this process:
+    the app must exit before torch is added, or in-use .pyd files could block
+    package upgrades."""
+    subprocess.Popen(
+        ["cmd.exe", "/c", "start", "Sublume Installer",
+         str(root / "install.bat"), "-Profile", "full"],
+        cwd=str(root),
+    )
+
+
 class EngineSwitchMixin:
     """Engine-switch methods, mixed into ASRSupervisor."""
+
+    def _prompt_torch_install(self):
+        """Tell the user how to get the torch profile, per install kind.
+
+        Source installs get a "launch installer" button: install.bat -Profile
+        full adds torch incrementally (settings and downloaded models are
+        untouched), and the app closes so no loaded .pyd can block the
+        install. Cancel keeps the current engine running. Portable installs
+        keep the manual pip instructions."""
+        parent = self._app._panel
+        if _torch_install_hint_mode() == "pip":
+            QMessageBox.warning(parent, t("error_title"), t("error_engine_needs_torch"))
+            return
+
+        box = QMessageBox(parent)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle(t("error_title"))
+        box.setText(t("error_engine_needs_torch_installer"))
+        launch_btn = box.addButton(
+            t("btn_launch_installer"), QMessageBox.ButtonRole.AcceptRole
+        )
+        box.addButton(QMessageBox.StandardButton.Cancel)
+        box.exec()
+        if box.clickedButton() is not launch_btn:
+            return
+
+        log.info("Launching the installer for the torch profile; closing the app")
+        _launch_installer()
+        app = QApplication.instance()
+        if app is not None:
+            QTimer.singleShot(0, app.quit)
 
     def _load_engine_client(self, config: dict):
         """Build the ASR backend for a worker config. Local engines run in an isolated
@@ -77,11 +133,7 @@ class EngineSwitchMixin:
         # worker subprocess die on the import and going through restore.
         if engine_type in _TORCH_ENGINES and importlib.util.find_spec("torch") is None:
             log.warning(f"ASR engine {engine_type} requires torch, which is not installed")
-            QMessageBox.warning(
-                self._app._panel,
-                t("error_title"),
-                t("error_engine_needs_torch"),
-            )
+            self._prompt_torch_install()
             return
         device = settings.get("asr_device", self._asr_device)
         if engine_type == "sensevoice-onnx":
