@@ -36,6 +36,7 @@ from sublume.asr.client import (
     ASRWorkerTimeout,
 )
 from sublume.asr.engine_switch import EngineSwitchMixin
+from sublume.asr.mem_policy import mem_threshold_for
 
 log = logging.getLogger("Sublume")
 
@@ -80,11 +81,8 @@ class ASRSupervisor(EngineSwitchMixin):
         self._asr_worker_baseline_mb = None
         self._asr_recycle_delta_mb = 2048
         self._mem_last_mb = app._mem_baseline_mb
-        # Memory ceiling: warn once when combined RSS (main + ASR worker) exceeds
-        # threshold. The ASR backend now runs in a worker process and keeps
-        # native-side workspaces/caches that Python GC cannot always reclaim, so the
-        # ceiling must include the worker's RSS (see _mem_snapshot).
-        self._mem_threshold_mb = 4096
+        # Memory ceiling: warn once per worker activation; thresholds and their
+        # rationale live in sublume.asr.mem_policy.
         self._mem_warned = False
         self._mem_warning_callback = None
 
@@ -192,7 +190,12 @@ class ASRSupervisor(EngineSwitchMixin):
         # The ASR model (and its native-side leak) lives in the worker process now,
         # so sample its RSS too; the main process holds only VAD + Qt.
         worker_rss_mb = 0.0
-        client = self._asr
+        # Read the active client and its engine type together so the sampled RSS
+        # and the threshold it is judged against belong to the same worker; the
+        # psutil sampling itself stays outside the lock.
+        with self._asr_lock:
+            client = self._asr
+            asr_type = self._app._asr_type
         if client is not None and client.pid is not None:
             try:
                 import psutil
@@ -220,6 +223,7 @@ class ASRSupervisor(EngineSwitchMixin):
             "gpu_reserved": gpu_reserved_mb,
             "msgs": msgs,
             "vad_buf": vad_buf,
+            "asr_type": asr_type,
         }
 
     def _log_mem_after_asr(self, kind: str, audio_seconds: float, asr_ms: float):
@@ -236,7 +240,7 @@ class ASRSupervisor(EngineSwitchMixin):
             f"audio={audio_seconds:.1f}s asr={asr_ms:.0f}ms "
             f"outputs={self._app._asr_count} msgs={snap['msgs']} vad_buf={snap['vad_buf']}"
         )
-        self._check_memory_threshold(snap["total_rss"])
+        self._check_memory_threshold(snap["total_rss"], snap["asr_type"])
 
     def _release_memory_caches(self):
         gc.collect()
@@ -317,6 +321,7 @@ class ASRSupervisor(EngineSwitchMixin):
                 self._asr_error_count = 0
                 self._asr_restart_state = dict(state)
                 self._asr_worker_baseline_mb = None
+                self._mem_warned = False
                 self._asr_generation += 1
         if stale is not None:
             log.info("Discarding superseded ASR worker (newer switch won the race)")
@@ -454,13 +459,17 @@ class ASRSupervisor(EngineSwitchMixin):
             if self._asr is None and self._app._overlay:
                 self._app._overlay.update_asr_device("ASR unavailable")
 
-    def _check_memory_threshold(self, rss_mb: float):
-        if self._mem_warned or rss_mb < self._mem_threshold_mb:
-            return
-        self._mem_warned = True
+    def _check_memory_threshold(self, rss_mb: float, asr_type: str | None):
+        threshold_mb = mem_threshold_for(asr_type)
+        # Guard-read and set under one lock: check-then-set would otherwise let two
+        # threads (ASR thread + Qt tick) both pass the guard and warn twice.
+        with self._asr_lock:
+            if self._mem_warned or rss_mb < threshold_mb:
+                return
+            self._mem_warned = True
         log.warning(
             f"Memory ceiling reached: combined RSS (main+worker)={rss_mb:.0f}MB "
-            f"(threshold {self._mem_threshold_mb}MB). "
+            f"(threshold {threshold_mb}MB for engine {asr_type or 'none'}). "
             f"Recommend restarting Sublume to free C-side allocator caches."
         )
         if self._mem_warning_callback is not None:
@@ -482,4 +491,4 @@ class ASRSupervisor(EngineSwitchMixin):
             f"msgs={snap['msgs']} asr_calls={self._app._mem_asr_call_count} "
             f"asr_count={self._app._asr_count} tl_count={self._app._translate_count}"
         )
-        self._check_memory_threshold(snap["total_rss"])
+        self._check_memory_threshold(snap["total_rss"], snap["asr_type"])

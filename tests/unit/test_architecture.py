@@ -1,8 +1,8 @@
 """Architectural regression tests.
 
-Rule: designated sublume.core modules must be importable without Qt or
-torch — that is what makes them unit-testable anywhere (including Linux CI)
-and is the foundation for the macOS port. A plain import check is NOT enough
+Rule: designated modules must be importable without Qt or torch — that is
+what makes them unit-testable anywhere (including Linux CI) and is the
+foundation for the macOS port. A plain import check is NOT enough
 on dev machines where the project venv has PyQt6/torch installed, so each
 module is imported in a subprocess with a sys.meta_path blocker that raises
 on any Qt/torch import at any depth.
@@ -16,14 +16,15 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 
-# Extend as Phase 3 purifies more of core/ (vad_processor is torch-bound by
-# nature; audio_capture is Windows-bound until the capture interface lands).
+# Extend as Phase 3 purifies more modules (core.vad_processor is torch-bound by
+# nature; core.audio_capture is Windows-bound until the capture interface lands).
 QT_TORCH_FREE_MODULES = (
     "sublume.core.pipeline",
     "sublume.core.segmentation",
     "sublume.config.schema",
     "sublume.config.store",
     "sublume.paths",
+    "sublume.asr.mem_policy",
 )
 
 _BLOCKER = """

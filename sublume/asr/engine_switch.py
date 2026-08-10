@@ -373,6 +373,7 @@ class EngineSwitchMixin:
                 self._asr_restart_state = dict(state)
                 self._asr_restart_count = 0
                 self._asr_worker_baseline_mb = None
+                self._mem_warned = False
                 self._asr_generation += 1
 
         if new_asr[0] is not None:
