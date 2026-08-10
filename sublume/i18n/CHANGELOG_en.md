@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-10 (v2026.08.10-tw.1)
+- **Project renamed: LiveTranslate → Sublume** (sub for subtitles + lume, Latin for light). Development has split from the original upstream project as of this release. What actually changes for you: the GitHub URL is now moonstarsky37/Sublume (the old URL redirects, update.bat keeps working) and log files are prefixed sublume_*; settings, downloaded models and transcripts are reused in place - no manual migration
+- **torch is now optional**: the default Lightweight profile has no torch - VAD runs on a bundled ONNX model alongside the SenseVoice ONNX engine, shrinking the install from ~5GB to ~1GB with no GPU required. Install the Full profile only for the FunASR / Anime-Whisper engines (it can be added later, see next item)
+- Picking a torch engine on a Lightweight install now offers a one-click fix: "Launch Installer" reruns the installer with the Full profile preselected (settings and downloaded models untouched); the app closes during the install and you restart it after. The portable build keeps the manual commands (now including the previously missing requirements-torch.txt line)
+- Install guard: a completion marker (.sublume-ready) - an interrupted install is caught at the next launch and sent back to the installer instead of booting half an environment. Existing installs get caught once after this update; rerun install.bat (or update.bat) once to heal
+- README overhauled: new positioning, an interface overview (three surfaces + three header layouts) with five new screenshots, and two-profile install docs; the architecture diagram is now a pre-rendered SVG (the mermaid block failed to render on GitHub)
+- (backfill for v2026.08.09-tw.1/tw.2) Internal refactor: model_manager and the dialogs became packages; the README gained an architecture diagram
+
 ## 2026-08-08 (v2026.08.08-tw.5)
 - New SenseVoice ONNX engine (Settings -> ASR -> Engine): the same model as an int8 ONNX export, running on CPU with no GPU needed. ASR startup drops from 56s to about 2s, the model from 936MB to 239MB, and transcription speed matches the current GPU path - which frees the GPU for translation. The existing FunASR engine is untouched; you can switch between them at any time
 - The first-launch setup screen now asks which recognition engine to use: SenseVoice ONNX (239MB, no graphics card) is preselected, with the FunASR build (936MB, GPU inference) as the alternative. The choice decides what gets downloaded and can still be changed later in Settings
