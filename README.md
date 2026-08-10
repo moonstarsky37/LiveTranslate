@@ -177,6 +177,11 @@ Sublume 的前身是 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathD
 
 整條管線在本機的三種執行單位之間流動：GUI 主行程負責介面與翻譯、背景執行緒負責音訊與排隊、ASR worker 子行程獨佔辨識引擎（切換引擎時直接汰換子行程，模型與 VRAM 隨行程釋放，GUI 永不卡死）。
 
+![Sublume 架構圖](screenshot/architecture-zh.svg)
+
+<details>
+<summary>mermaid 原始碼（文字版，維護用）</summary>
+
 ```mermaid
 flowchart TB
     audio(["系統音訊（可混入麥克風）"])
@@ -215,6 +220,10 @@ flowchart TB
     cp -.->|"缺模型時觸發下載"| mm
     mm <-->|"下載"| hub
 ```
+
+SVG 重產：`uv run archviz docs/architecture.zh.json --name architecture-zh -o screenshot`（archviz 為維護者本機工具）；改架構時請同步更新 JSON 與上方 mermaid 文字版。
+
+</details>
 
 跨執行緒的 UI 更新一律走 Qt signal；設定檔讀寫只經過 `SettingsStore`（原子寫入＋載入時遷移）。
 

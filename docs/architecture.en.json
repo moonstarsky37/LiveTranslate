@@ -1,0 +1,116 @@
+{
+  "_comment": "Sublume architecture diagram spec (English). Rendered with the maintainer's local archviz tool: uv run archviz docs/architecture.en.json --name architecture-en -o screenshot  ->  screenshot/architecture-en.svg. Keep in sync with the mermaid source in README_en.md's <details> block.",
+  "title": "Sublume architecture",
+  "subtitle": "System audio → VAD → ASR → LLM translation → subtitle overlay (everything local except the translation API)",
+  "container": {
+    "id": "gui",
+    "title": "GUI process (Qt event loop)",
+    "icon": "window",
+    "color": "blue",
+    "layers": [
+      {
+        "id": "capthread",
+        "title": "Capture thread",
+        "color": "green",
+        "rows": [
+          [
+            { "id": "cap", "title": "Audio capture", "subtitle": "core/audio_capture.py\nWASAPI loopback · 32ms", "icon": "bolt" },
+            { "id": "vad", "title": "Sentence VAD", "subtitle": "core/vad_processor.py\nSilero (jit/ONNX) / energy", "icon": "bars" }
+          ]
+        ]
+      },
+      {
+        "id": "pipeline",
+        "title": "ASR queue thread",
+        "color": "blue",
+        "rows": [
+          [
+            { "id": "asrq", "title": "Incremental ASR + splitting", "subtitle": "core/pipeline.py", "icon": "route" },
+            { "id": "cli", "title": "ASRClient", "subtitle": "asr/client.py\nworker lifecycle + timeouts", "icon": "plug" }
+          ]
+        ]
+      },
+      {
+        "id": "uilayer",
+        "title": "Translation & UI",
+        "color": "purple",
+        "rows": [
+          [
+            { "id": "tr", "title": "Translation", "subtitle": "translation/translator.py — async · streaming · JSON · context", "icon": "braces", "stretch": true }
+          ],
+          [
+            { "id": "ui1", "title": "Subtitle overlay", "subtitle": "ui/overlay/", "icon": "window" },
+            { "id": "ui2", "title": "OBS subtitle window", "subtitle": "ui/overlay/\nsubtitle_window.py", "icon": "window" },
+            { "id": "tw", "title": "Transcripts", "subtitle": "core/\ntranscript_writer.py", "icon": "doc" },
+            { "id": "cp", "title": "Settings panel", "subtitle": "ui/control_panel/\n+ ui/dialogs/", "icon": "gear" }
+          ]
+        ]
+      }
+    ]
+  },
+  "externals": [
+    {
+      "id": "audio", "side": "left", "color": "gray", "icon": "bolt", "alignTo": "capthread", "gap": 110,
+      "lines": [
+        { "text": "System audio", "bold": true },
+        { "text": "(mic mix-in optional)", "muted": true }
+      ]
+    },
+    {
+      "id": "worker", "side": "right", "color": "orange", "icon": "atom", "alignTo": "pipeline", "gap": 120,
+      "lines": [
+        { "text": "ASR worker subprocess", "bold": true },
+        { "text": "asr/worker.py", "muted": true },
+        { "text": "", "size": 6 },
+        { "text": "One engine, loaded exclusively:", "muted": true },
+        { "text": "SenseVoice ONNX (default, CPU)", "muted": true },
+        { "text": "faster-whisper / FunASR", "muted": true },
+        { "text": "Anime-Whisper / remote ASR", "muted": true }
+      ]
+    },
+    {
+      "id": "llm", "side": "right", "color": "teal", "icon": "cloud", "alignTo": "uilayer", "gap": 120, "dy": 30,
+      "lines": [
+        { "text": "OpenAI-compatible API", "bold": true },
+        { "text": "cloud or local", "muted": true },
+        { "text": "llama.cpp / Ollama / vLLM", "muted": true }
+      ]
+    },
+    {
+      "id": "st", "side": "bottom", "color": "gray", "icon": "doc", "alignTo": "cp", "dx": 40, "gap": 55,
+      "lines": [
+        { "text": "SettingsStore", "bold": true },
+        { "text": "user_settings.json + config.yaml", "muted": true }
+      ]
+    },
+    {
+      "id": "mm", "side": "bottom", "color": "green", "icon": "db", "alignTo": "ui2", "gap": 55,
+      "lines": [
+        { "text": "Model management model_manager/", "bold": true },
+        { "text": "registry · cache · download (HF-only)", "muted": true }
+      ]
+    },
+    {
+      "id": "hub", "side": "bottom", "color": "purple", "icon": "globe", "alignTo": "ui1", "dx": -130, "gap": 55,
+      "lines": [
+        { "text": "HuggingFace Hub", "bold": true },
+        { "text": "model downloads only", "muted": true }
+      ]
+    }
+  ],
+  "edges": [
+    { "from": "audio", "to": "cap" },
+    { "from": "cap", "to": "vad" },
+    { "from": "vad", "to": "asrq", "label": "complete utterance" },
+    { "from": "asrq", "to": "cli" },
+    { "from": "cli", "to": "worker", "bidir": true, "label": "multiprocessing.Pipe" },
+    { "from": "cli", "to": "tr", "label": "recognized text" },
+    { "from": "tr", "to": "llm", "bidir": true, "label": "HTTPS" },
+    { "from": "tr", "to": "ui1" },
+    { "from": "tr", "to": "ui2" },
+    { "from": "tr", "to": "tw" },
+    { "from": "cp", "to": "st", "dashed": true, "label": "read/write settings" },
+    { "from": "cp", "to": "mm", "dashed": true, "label": "downloads when models missing" },
+    { "from": "mm", "to": "hub", "bidir": true, "label": "download" }
+  ]
+}
