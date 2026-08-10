@@ -1,5 +1,13 @@
 # 更新日誌
 
+## 2026-08-10 (v2026.08.10-tw.1)
+- **專案更名: LiveTranslate → Sublume** (sub 字幕 + lume, 拉丁文的「光」)。與原上游專案自本版起分道發展, 各自維護。對使用者的實際影響: GitHub 網址改為 moonstarsky37/Sublume (舊網址自動轉址, update.bat 不受影響), 日誌檔前綴改為 sublume_*; 設定檔、已下載的模型、逐字稿全部原地沿用, 升級無需任何手動搬移
+- **torch 變成可選安裝**: 預設「輕量 profile」不含 torch — 語音切分 (Silero VAD) 改走內建 ONNX 模型, 搭配 SenseVoice ONNX 辨識引擎, 整套安裝從約 5GB 降到約 1GB, 不需要顯示卡。要用 FunASR / Anime-Whisper 引擎再裝「完整 profile」即可 (隨時可補裝, 見下條)
+- 在輕量安裝中選到需要 torch 的引擎時, 彈窗改為一鍵引導: 按「啟動安裝程式」自動以「完整」模式補裝 (現有設定與已下載模型不受影響), 補裝期間程式先關閉, 完成後重啟即可; 免安裝版維持顯示手動指令 (並補上先前缺漏的 requirements-torch.txt 一行)
+- 安裝防呆: 安裝完成標記 (.sublume-ready) — 中斷的安裝下次啟動會被擋下並引導重跑, 不再拿半套環境開跑。既有安裝更新後第一次啟動會被擋一次, 重跑一次 install.bat (或 update.bat) 即恢復
+- README 全面改版: 定位重寫、新增介面總覽 (三種介面 + 三種浮窗版面) 與五張新截圖、雙 profile 安裝說明; 架構圖改為預先渲染的 SVG (GitHub 上的 mermaid 原本 render 失敗)
+- (補記 v2026.08.09-tw.1/tw.2) 內部重構: model_manager 與對話框拆成套件; README 新增架構圖
+
 ## 2026-08-08 (v2026.08.08-tw.5)
 - 新增 SenseVoice ONNX 辨識引擎 (設定 → 辨識 → 引擎): 同一個模型的 ONNX int8 版本, 走 CPU 不需要顯卡。ASR 啟動從 56 秒降到約 2 秒, 模型 936MB 降到 239MB, 辨識速度與原本的 GPU 版相當; 顯卡空出來給翻譯用。原本的 FunASR 引擎維持不變, 兩者可隨時切換
 - 首次啟動的初始設定新增辨識引擎選擇: 預設是 SenseVoice ONNX (下載 239 MB, 不需顯示卡), 也可改選 FunASR 版 (下載 936 MB, 用 GPU 推理)。選擇會影響首次下載的內容, 之後仍可在設定中更改

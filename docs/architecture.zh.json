@@ -1,0 +1,116 @@
+{
+  "_comment": "Sublume architecture diagram spec (zh-TW). Rendered with the maintainer's local archviz tool: uv run archviz docs/architecture.zh.json --name architecture-zh -o screenshot  ->  screenshot/architecture-zh.svg. Keep in sync with the mermaid source in README.md's <details> block.",
+  "title": "Sublume 架構",
+  "subtitle": "系統音訊 → VAD → ASR → LLM 翻譯 → 字幕浮窗(除翻譯 API 外全在本機)",
+  "container": {
+    "id": "gui",
+    "title": "GUI 主行程(Qt 事件圈)",
+    "icon": "window",
+    "color": "blue",
+    "layers": [
+      {
+        "id": "capthread",
+        "title": "擷取執行緒",
+        "color": "green",
+        "rows": [
+          [
+            { "id": "cap", "title": "音訊擷取", "subtitle": "core/audio_capture.py\nWASAPI loopback · 32ms", "icon": "bolt" },
+            { "id": "vad", "title": "語句切分 VAD", "subtitle": "core/vad_processor.py\nSilero(jit/ONNX)/能量式", "icon": "bars" }
+          ]
+        ]
+      },
+      {
+        "id": "pipeline",
+        "title": "ASR 佇列執行緒",
+        "color": "blue",
+        "rows": [
+          [
+            { "id": "asrq", "title": "增量辨識與斷句", "subtitle": "core/pipeline.py", "icon": "route" },
+            { "id": "cli", "title": "ASRClient", "subtitle": "asr/client.py\nworker 生命週期與逾時", "icon": "plug" }
+          ]
+        ]
+      },
+      {
+        "id": "uilayer",
+        "title": "翻譯與介面",
+        "color": "purple",
+        "rows": [
+          [
+            { "id": "tr", "title": "翻譯", "subtitle": "translation/translator.py — 非同步 · 串流 · JSON · 上下文", "icon": "braces", "stretch": true }
+          ],
+          [
+            { "id": "ui1", "title": "字幕浮窗", "subtitle": "ui/overlay/", "icon": "window" },
+            { "id": "ui2", "title": "OBS 字幕視窗", "subtitle": "ui/overlay/\nsubtitle_window.py", "icon": "window" },
+            { "id": "tw", "title": "逐字稿", "subtitle": "core/\ntranscript_writer.py", "icon": "doc" },
+            { "id": "cp", "title": "設定面板", "subtitle": "ui/control_panel/\n+ ui/dialogs/", "icon": "gear" }
+          ]
+        ]
+      }
+    ]
+  },
+  "externals": [
+    {
+      "id": "audio", "side": "left", "color": "gray", "icon": "bolt", "alignTo": "capthread", "gap": 110,
+      "lines": [
+        { "text": "系統音訊", "bold": true },
+        { "text": "(可混入麥克風)", "muted": true }
+      ]
+    },
+    {
+      "id": "worker", "side": "right", "color": "orange", "icon": "atom", "alignTo": "pipeline", "gap": 120,
+      "lines": [
+        { "text": "ASR worker 子行程", "bold": true },
+        { "text": "asr/worker.py", "muted": true },
+        { "text": "", "size": 6 },
+        { "text": "單一辨識引擎,擇一載入:", "muted": true },
+        { "text": "SenseVoice ONNX(預設,CPU)", "muted": true },
+        { "text": "faster-whisper / FunASR", "muted": true },
+        { "text": "Anime-Whisper / 遠端 ASR", "muted": true }
+      ]
+    },
+    {
+      "id": "llm", "side": "right", "color": "teal", "icon": "cloud", "alignTo": "uilayer", "gap": 120, "dy": 30,
+      "lines": [
+        { "text": "OpenAI 相容 API", "bold": true },
+        { "text": "雲端或本機", "muted": true },
+        { "text": "llama.cpp / Ollama / vLLM", "muted": true }
+      ]
+    },
+    {
+      "id": "st", "side": "bottom", "color": "gray", "icon": "doc", "alignTo": "cp", "dx": 40, "gap": 55,
+      "lines": [
+        { "text": "SettingsStore", "bold": true },
+        { "text": "user_settings.json + config.yaml", "muted": true }
+      ]
+    },
+    {
+      "id": "mm", "side": "bottom", "color": "green", "icon": "db", "alignTo": "ui2", "gap": 55,
+      "lines": [
+        { "text": "模型管理 model_manager/", "bold": true },
+        { "text": "registry · cache · download(僅 HF)", "muted": true }
+      ]
+    },
+    {
+      "id": "hub", "side": "bottom", "color": "purple", "icon": "globe", "alignTo": "ui1", "dx": -130, "gap": 55,
+      "lines": [
+        { "text": "HuggingFace Hub", "bold": true },
+        { "text": "僅下載模型時", "muted": true }
+      ]
+    }
+  ],
+  "edges": [
+    { "from": "audio", "to": "cap" },
+    { "from": "cap", "to": "vad" },
+    { "from": "vad", "to": "asrq", "label": "完整語句段" },
+    { "from": "asrq", "to": "cli" },
+    { "from": "cli", "to": "worker", "bidir": true, "label": "multiprocessing.Pipe" },
+    { "from": "cli", "to": "tr", "label": "辨識文字" },
+    { "from": "tr", "to": "llm", "bidir": true, "label": "HTTPS" },
+    { "from": "tr", "to": "ui1" },
+    { "from": "tr", "to": "ui2" },
+    { "from": "tr", "to": "tw" },
+    { "from": "cp", "to": "st", "dashed": true, "label": "讀寫設定" },
+    { "from": "cp", "to": "mm", "dashed": true, "label": "缺模型時觸發下載" },
+    { "from": "mm", "to": "hub", "bidir": true, "label": "下載" }
+  ]
+}

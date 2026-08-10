@@ -177,6 +177,11 @@ Sublume began as a fork of [TheDeathDragon/LiveTranslate](https://github.com/The
 
 The pipeline flows through three kinds of execution units, all local: the GUI process owns the interface and translation, background threads own audio and queuing, and an ASR worker subprocess owns the recognition engine (switching engines replaces the subprocess, so models and VRAM are freed with it and the GUI never blocks).
 
+![Sublume architecture diagram](screenshot/architecture-en.svg)
+
+<details>
+<summary>mermaid source (text version, for maintenance)</summary>
+
 ```mermaid
 flowchart TB
     audio(["System audio (mic mix-in optional)"])
@@ -215,6 +220,10 @@ flowchart TB
     cp -.->|"triggers downloads when models are missing"| mm
     mm <-->|"download"| hub
 ```
+
+SVG regen: `uv run archviz docs/architecture.en.json --name architecture-en -o screenshot` (archviz is a maintainer-local tool); when the architecture changes, update the JSON and the mermaid text above together.
+
+</details>
 
 Cross-thread UI updates always go through Qt signals; settings I/O goes only through `SettingsStore` (atomic writes + load-time migrations).
 
