@@ -60,16 +60,23 @@ Write-Step "Writing launcher..."
 $StartBat = @'
 @echo off
 cd /d "%~dp0"
-if not exist ".venv\Scripts\python.exe" (
-    echo First run: setting up environment. This downloads Python and dependencies and may take several minutes...
-    powershell -ExecutionPolicy Bypass -File "%~dp0bootstrap.ps1"
-    if errorlevel 1 (
-        echo.
-        echo [ERROR] Setup failed. See messages above.
-        pause
-        exit /b 1
-    )
+rem The ready marker is written only after a fully verified setup; a missing
+rem marker with an existing venv means an interrupted install - redo setup.
+if not exist ".venv\Scripts\python.exe" goto setup
+if not exist ".venv\.sublume-ready" goto setup
+goto launch
+
+:setup
+echo First run: setting up environment. This downloads Python and dependencies and may take several minutes...
+powershell -ExecutionPolicy Bypass -File "%~dp0bootstrap.ps1"
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Setup failed. See messages above.
+    pause
+    exit /b 1
 )
+
+:launch
 echo Starting Sublume...
 .venv\Scripts\python.exe main.py
 if errorlevel 1 (
@@ -122,32 +129,58 @@ function Enable-SystemProxy {
 }
 Enable-SystemProxy
 
+# A failed setup must never leave the environment looking complete: the
+# marker is deleted up front and only written back after uv pip check passes.
+$Ready = Join-Path $Root ".venv\.sublume-ready"
+Remove-Item -LiteralPath $Ready -Force -ErrorAction SilentlyContinue
+
 Write-Host "Creating virtual environment with Python 3.12..." -ForegroundColor Cyan
-& $Uv venv --python 3.12 --managed-python .venv
+& $Uv venv --python 3.12 --managed-python --allow-existing .venv
 if ($LASTEXITCODE -ne 0) { Write-Host "Failed to create venv" -ForegroundColor Red; exit 1 }
 $Py = ".venv\Scripts\python.exe"
 
-# Blackwell (sm_120+) needs cu128; older NVIDIA uses cu126; no GPU falls back to CPU
-$Index = "https://download.pytorch.org/whl/cpu"
-try {
-    $cc = & nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>$null
-    if ($LASTEXITCODE -eq 0 -and $cc) {
-        $cap = [double]($cc.Trim() -split "`n")[0]
-        if ($cap -ge 12.0) { $Index = "https://download.pytorch.org/whl/cu128" }
-        else { $Index = "https://download.pytorch.org/whl/cu126" }
-        Write-Host "NVIDIA GPU detected (compute $cap), using $Index" -ForegroundColor Green
-    }
-} catch {}
-if ($Index -like "*cpu*") { Write-Host "No NVIDIA GPU detected, installing CPU-only PyTorch" -ForegroundColor Yellow }
+# Profile pick: an NVIDIA GPU gets the full torch profile (funasr /
+# Anime-Whisper engines); anything else gets the lightweight torch-free
+# profile - SenseVoice ONNX engine + ONNX VAD, no torch at all.
+# SUBLUME_FORCE_CPU=1 forces the lightweight profile on a GPU machine.
+$TorchProfile = $false
+$Index = ""
+if ($env:SUBLUME_FORCE_CPU -ne "1") {
+    try {
+        $cc = & nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>$null
+        if ($LASTEXITCODE -eq 0 -and $cc) {
+            $TorchProfile = $true
+            $cap = [double]($cc.Trim() -split "`n")[0]
+            if ($cap -ge 12.0) { $Index = "https://download.pytorch.org/whl/cu128" }
+            else { $Index = "https://download.pytorch.org/whl/cu126" }
+            Write-Host "NVIDIA GPU detected (compute $cap), full profile via $Index" -ForegroundColor Green
+        }
+    } catch {}
+}
+if (-not $TorchProfile) {
+    Write-Host "Lightweight profile: no torch; SenseVoice ONNX is the default engine" -ForegroundColor Yellow
+}
 
-Write-Host "Installing PyTorch (this may take a while)..." -ForegroundColor Cyan
-& $Uv pip install --python $Py torch torchaudio --index-url $Index
-if ($LASTEXITCODE -ne 0) { Write-Host "PyTorch install failed" -ForegroundColor Red; exit 1 }
+if ($TorchProfile) {
+    Write-Host "Installing PyTorch (this may take a while)..." -ForegroundColor Cyan
+    & $Uv pip install --python $Py torch torchaudio --index-url $Index
+    if ($LASTEXITCODE -ne 0) { Write-Host "PyTorch install failed" -ForegroundColor Red; exit 1 }
+}
 
 Write-Host "Installing dependencies..." -ForegroundColor Cyan
 & $Uv pip install --python $Py -r requirements.txt
 if ($LASTEXITCODE -ne 0) { Write-Host "Dependency install failed" -ForegroundColor Red; exit 1 }
 
+if ($TorchProfile) {
+    Write-Host "Installing torch-profile dependencies..." -ForegroundColor Cyan
+    & $Uv pip install --python $Py -r requirements-torch.txt
+    if ($LASTEXITCODE -ne 0) { Write-Host "Torch-profile dependency install failed" -ForegroundColor Red; exit 1 }
+}
+
+& $Uv pip check --python $Py
+if ($LASTEXITCODE -ne 0) { Write-Host "Installed dependencies are inconsistent" -ForegroundColor Red; exit 1 }
+
+Set-Content -LiteralPath $Ready -Value (Get-Date -Format o) -Encoding ascii
 Write-Host "Setup complete." -ForegroundColor Green
 '@
 Set-Content -Path (Join-Path $Stage "bootstrap.ps1") -Value $Bootstrap -Encoding ASCII

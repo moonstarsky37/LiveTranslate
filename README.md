@@ -61,14 +61,15 @@ ASR 引擎、VAD 切分、翻譯模型、字幕樣式、效能測試、模型快
 
 - Windows 10 / 11（macOS 版開發中，目前尚不可用）
 - 不需預先安裝 Python：`install.bat` 會經 uv 自動取得 Python 3.12（3.13 因相依套件尚未支援而排除）
-- 建議配備 NVIDIA 顯示卡與 CUDA 12.6（RTX 50 系列等 Blackwell 架構需 CUDA 12.8）；純 CPU 亦可執行，惟辨識速度較慢
+- **顯示卡非必需**：輕量 profile（預設）不含 torch，SenseVoice ONNX 引擎純 CPU 即時辨識，整套安裝約 1GB
+- 要用 funasr / Anime-Whisper 引擎才需要完整 profile：torch + NVIDIA 顯示卡與 CUDA 12.6（RTX 50 系列等 Blackwell 架構需 CUDA 12.8），安裝約 5GB
 - 網路需能連上翻譯 API 與 HuggingFace（翻譯採用本地模型時，僅初次下載 ASR 模型需要網路）
 
 ## 安裝
 
 ### 免安裝版（不需安裝 Python）
 
-從 [Releases](https://github.com/moonstarsky37/Sublume/releases) 下載 `Sublume-portable-*.zip`，解壓縮後執行 `start.bat`。首次執行會自動下載可攜版 Python 3.12，並依照顯示卡安裝對應的相依套件。
+從 [Releases](https://github.com/moonstarsky37/Sublume/releases) 下載 `Sublume-portable-*.zip`，解壓縮後執行 `start.bat`。首次執行會自動下載可攜版 Python 3.12，並依顯示卡選擇 profile：有 NVIDIA 顯示卡裝完整 profile（含 torch），沒有則自動採輕量 profile（無 torch，約 1GB）。
 
 ### 從原始碼安裝
 
@@ -83,10 +84,10 @@ cd Sublume
 
 1. 偵測 [uv](https://docs.astral.sh/uv/)，未安裝時經 winget 自動安裝（無 winget 則改用官方安裝腳本）
 2. 以 uv 專屬的 Python 3.12 建立虛擬環境（既有環境損壞或版本不符時會自動重建），完全不使用系統 Python
-3. 偵測 NVIDIA 顯示卡與運算能力，自動判斷 CUDA 12.6 或 12.8，安裝前可改選 CPU 版
-4. 安裝 PyTorch 與其餘相依套件
+3. 選擇 profile：**輕量**（無 torch，SenseVoice ONNX 引擎，約 1GB）或 **完整**（加裝 torch 與 funasr / Anime-Whisper 引擎）；偵測到 NVIDIA 顯示卡時自動判斷 CUDA 12.6 或 12.8
+4. 安裝相依套件並驗證（`uv pip check` 通過才寫入完成標記；中斷的安裝會被 `start.bat` 擋下，要求重跑 `install.bat`，不會拿半套環境開跑）
 
-安裝過程會自動套用 Windows 系統 Proxy 設定。完成後執行 `start.bat` 啟動；日後執行 `update.bat` 即可更新（未安裝 Git 時同樣會經 winget 自動安裝）。
+安裝過程會自動套用 Windows 系統 Proxy 設定。完成後執行 `start.bat` 啟動；日後執行 `update.bat` 即可更新（會依 venv 內是否有 torch 自動更新對應 profile 的相依套件）。
 
 <details>
 <summary>手動安裝</summary>
@@ -95,12 +96,16 @@ cd Sublume
 python -m venv .venv
 .venv\Scripts\activate
 
-# PyTorch（三選一）
+# 輕量 profile（無 torch，預設引擎 SenseVoice ONNX）
+pip install -r requirements.txt
+
+# 完整 profile（funasr / Anime-Whisper 引擎）：先裝 torch（三選一），再疊 torch 需求檔
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126  # CUDA
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128  # CUDA（RTX 50 系列）
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu    # 僅 CPU
-
 pip install -r requirements.txt
+pip install -r requirements-torch.txt
+
 .venv\Scripts\python.exe main.py
 ```
 
@@ -155,7 +160,7 @@ funasr_nano/            vendored 模型程式碼
 Sublume 的前身是 [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate)（MIT）的 fork，2026-08 起改以現名獨立維護。相對原專案的主要差異：
 
 - **SenseVoice ONNX 為預設辨識引擎**（sherpa-onnx）：CPU 上數秒啟動、不需 CUDA，模型 240MB（torch 版 936MB）。
-- **輕量化進行中**：VAD 已改走 ONNX，torch 正在變成可選依賴。
+- **torch 是可選依賴**：VAD 與預設引擎都走 ONNX，輕量安裝整套約 1GB（原本約 5GB）。
 - **安裝不需預裝 Python**：`install.bat` 經 uv 自動取得 Python 3.12，並依顯示卡自動選擇 CUDA 或 CPU 版。
 - **模型改從 HuggingFace 下載**。上游預設走 ModelScope，在部分網路環境幾乎連不上；之前下載好的模型不受影響，不用重抓。
 - **初始設定流程重做**，不會再自己倒數 15 秒就開始下載；中途關掉程式，下次打開會從斷掉的地方繼續。

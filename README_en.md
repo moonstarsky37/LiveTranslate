@@ -61,14 +61,15 @@ Audio is captured in 32ms chunks; Silero VAD segments complete utterances and fe
 
 - Windows 10 / 11 (a macOS version is in progress and not yet usable)
 - No preinstalled Python needed: `install.bat` fetches Python 3.12 through uv (3.13 is excluded due to dependency support)
-- NVIDIA GPU with CUDA 12.6 recommended (Blackwell GPUs such as the RTX 50 series need CUDA 12.8); CPU-only works but transcription is slower
+- **No GPU required**: the lightweight profile (default) has no torch — the SenseVoice ONNX engine transcribes in real time on a CPU, and the whole install is about 1GB
+- The full profile is only needed for the funasr / Anime-Whisper engines: torch + an NVIDIA GPU with CUDA 12.6 (Blackwell GPUs such as the RTX 50 series need CUDA 12.8), about 5GB installed
 - Network access to the translation API and HuggingFace (with a local translation model, network is only needed for the initial ASR model download)
 
 ## Install
 
 ### Portable build (no Python installation required)
 
-Download `Sublume-portable-*.zip` from [Releases](https://github.com/moonstarsky37/Sublume/releases), unzip, and run `start.bat`. The first run downloads a portable Python 3.12 and installs dependencies matching the GPU.
+Download `Sublume-portable-*.zip` from [Releases](https://github.com/moonstarsky37/Sublume/releases), unzip, and run `start.bat`. The first run downloads a portable Python 3.12 and picks the profile by GPU: machines with an NVIDIA GPU get the full profile (with torch), everything else gets the lightweight torch-free profile (~1GB).
 
 ### From source
 
@@ -83,10 +84,10 @@ Run `install.bat`. The installer will:
 
 1. Detect [uv](https://docs.astral.sh/uv/), installing it via winget if missing (falling back to the official install script)
 2. Create the virtual environment from uv's own Python 3.12 — never the system Python (a broken or wrong-version venv is rebuilt automatically)
-3. Detect the NVIDIA GPU and its compute capability, choosing CUDA 12.6 or 12.8 automatically, with a CPU-only option before installing
-4. Install PyTorch and the remaining dependencies
+3. Ask for a profile: **Lightweight** (no torch; SenseVoice ONNX engine, ~1GB) or **Full** (adds torch and the funasr / Anime-Whisper engines); with an NVIDIA GPU it picks CUDA 12.6 or 12.8 automatically
+4. Install and verify the dependencies (a completion marker is written only after `uv pip check` passes; an interrupted install is caught by `start.bat` and sent back to `install.bat` instead of launching on half an environment)
 
-The Windows system proxy is applied automatically during installation. Run `start.bat` to launch, and `update.bat` later to update (Git is installed via winget if missing).
+The Windows system proxy is applied automatically during installation. Run `start.bat` to launch, and `update.bat` later to update (it updates the right profile's dependencies based on whether torch is in the venv).
 
 <details>
 <summary>Manual install</summary>
@@ -95,12 +96,16 @@ The Windows system proxy is applied automatically during installation. Run `star
 python -m venv .venv
 .venv\Scripts\activate
 
-# PyTorch (pick one)
+# Lightweight profile (no torch; SenseVoice ONNX as the default engine)
+pip install -r requirements.txt
+
+# Full profile (funasr / Anime-Whisper engines): install torch first (pick one), then layer the torch requirements
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126  # CUDA
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128  # CUDA (RTX 50 series)
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu    # CPU only
-
 pip install -r requirements.txt
+pip install -r requirements-torch.txt
+
 .venv\Scripts\python.exe main.py
 ```
 
@@ -155,7 +160,7 @@ funasr_nano/            Vendored model code
 Sublume began as a fork of [TheDeathDragon/LiveTranslate](https://github.com/TheDeathDragon/LiveTranslate) (MIT) and has been maintained independently under its current name since 2026-08. The main differences from the original:
 
 - **SenseVoice ONNX is the default recognition engine** (sherpa-onnx): starts in seconds on a CPU, needs no CUDA, and the model is 240MB (vs 936MB for the torch build).
-- **Slimming down, in progress:** VAD already runs on ONNX, and torch is on its way to becoming an optional dependency.
+- **torch is an optional dependency:** the VAD and the default engine both run on ONNX; the lightweight install is about 1GB total (down from ~5GB).
 - **No preinstalled Python:** `install.bat` fetches Python 3.12 through uv and picks the CUDA or CPU build to match the GPU.
 - **Models come from HuggingFace.** Upstream defaults to ModelScope, which is barely reachable on some networks; models you already downloaded keep working.
 - **The first-run setup was redone** — no more 15-second auto-start countdown; close the app mid-download and the next launch resumes where it left off.

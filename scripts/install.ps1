@@ -203,40 +203,54 @@ if (-not $HasNvidia) {
     Write-Warn "No NVIDIA GPU detected, will install CPU-only PyTorch"
 }
 
-# Let user choose
+# ── Step 4: Pick profile ──
+# Lightweight = no torch at all: SenseVoice ONNX engine + ONNX VAD, ~1GB
+# total. CUDA = adds torch and the funasr / anime-whisper engines. Picking a
+# torch engine later without torch shows a message box with the install
+# commands, so Lightweight is never a dead end.
+$TorchProfile = $false
 Write-Host ""
 if ($HasNvidia) {
     $cudaLabel = if ($CudaVer -eq "cu128") { "CUDA 12.8" } else { "CUDA 12.6" }
-    Write-Host "  [1] $cudaLabel (recommended for your NVIDIA GPU)" -ForegroundColor White
-    Write-Host "  [2] CPU only" -ForegroundColor White
-    $choice = Read-Host "  Select PyTorch version [1]"
-    if ($choice -eq "2") { $HasNvidia = $false }
+    Write-Host "  [1] Full, $cudaLabel (torch profile: adds funasr / Anime-Whisper engines)" -ForegroundColor White
+    Write-Host "  [2] Lightweight, CPU only (no torch; SenseVoice ONNX engine, ~1GB total)" -ForegroundColor White
+    $choice = Read-Host "  Select profile [1]"
+    $TorchProfile = ($choice -ne "2")
 } else {
-    Write-Host "  [1] CPU only" -ForegroundColor White
-    Write-Host "  [2] CUDA (if you have NVIDIA GPU)" -ForegroundColor White
-    $choice = Read-Host "  Select PyTorch version [1]"
-    if ($choice -eq "2") { $HasNvidia = $true }
+    Write-Host "  [1] Lightweight, CPU only (no torch; SenseVoice ONNX engine, ~1GB total)" -ForegroundColor White
+    Write-Host "  [2] Full with CPU torch (funasr / Anime-Whisper engines, much larger)" -ForegroundColor White
+    $choice = Read-Host "  Select profile [1]"
+    $TorchProfile = ($choice -eq "2")
 }
 
-$TorchIndex = if ($HasNvidia) {
-    "https://download.pytorch.org/whl/$CudaVer"
+# A failed or interrupted install must never leave the venv looking complete
+# (start.bat checks this marker).
+$Ready = ".venv\.sublume-ready"
+Remove-Item -LiteralPath $Ready -Force -ErrorAction SilentlyContinue
+
+if ($TorchProfile) {
+    $TorchIndex = if ($HasNvidia) {
+        "https://download.pytorch.org/whl/$CudaVer"
+    } else {
+        "https://download.pytorch.org/whl/cpu"
+    }
+
+    # ── Step 5: Install PyTorch ──
+    Write-Step "Installing PyTorch (this may take a few minutes)..."
+    Write-Host "  Using index: $TorchIndex" -ForegroundColor Gray
+
+    & $Uv pip install --python $Python torch torchaudio --index-url $TorchIndex
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "PyTorch installation failed"
+        Read-Host "Press Enter to exit"
+        exit 1
+    }
+    Write-Ok "PyTorch installed"
 } else {
-    "https://download.pytorch.org/whl/cpu"
+    Write-Step "Lightweight profile: skipping PyTorch entirely"
 }
 
-# ── Step 4: Install PyTorch ──
-Write-Step "Installing PyTorch (this may take a few minutes)..."
-Write-Host "  Using index: $TorchIndex" -ForegroundColor Gray
-
-& $Uv pip install --python $Python torch torchaudio --index-url $TorchIndex
-if ($LASTEXITCODE -ne 0) {
-    Write-Err "PyTorch installation failed"
-    Read-Host "Press Enter to exit"
-    exit 1
-}
-Write-Ok "PyTorch installed"
-
-# ── Step 5: Install dependencies ──
+# ── Step 6: Install dependencies ──
 Write-Step "Installing dependencies from requirements.txt..."
 
 & $Uv pip install --python $Python -r requirements.txt
@@ -245,7 +259,29 @@ if ($LASTEXITCODE -ne 0) {
     Read-Host "Press Enter to exit"
     exit 1
 }
-Write-Ok "Dependencies installed"
+Write-Ok "Base dependencies installed"
+
+if ($TorchProfile) {
+    Write-Step "Installing torch-profile dependencies (funasr stack)..."
+    & $Uv pip install --python $Python -r requirements-torch.txt
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "Failed to install torch-profile dependencies"
+        Read-Host "Press Enter to exit"
+        exit 1
+    }
+    Write-Ok "Torch-profile dependencies installed"
+}
+
+# ── Step 7: Verify and stamp ──
+Write-Step "Verifying installed packages..."
+& $Uv pip check --python $Python
+if ($LASTEXITCODE -ne 0) {
+    Write-Err "Installed dependencies are inconsistent"
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+Set-Content -LiteralPath $Ready -Value (Get-Date -Format o) -Encoding ascii
+Write-Ok "Environment verified"
 
 # ── Done ──
 Write-Host ""
@@ -257,6 +293,10 @@ Write-Host "  To start Sublume:" -ForegroundColor White
 Write-Host "    Double-click start.bat" -ForegroundColor Yellow
 Write-Host "    or run: .venv\Scripts\python.exe main.py" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  First launch will download ASR models (~1GB)." -ForegroundColor White
+if ($TorchProfile) {
+    Write-Host "  First launch will download ASR models (~1GB)." -ForegroundColor White
+} else {
+    Write-Host "  First launch will download the SenseVoice ONNX model (~240MB)." -ForegroundColor White
+}
 Write-Host ""
 Read-Host "Press Enter to exit"

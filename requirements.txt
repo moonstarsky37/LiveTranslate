@@ -1,5 +1,14 @@
+# Sublume base profile - torch-free. This is everything the default install
+# needs: SenseVoice ONNX as the ASR engine and the vendored Silero ONNX VAD.
+# The torch profile (funasr / anime-whisper engines) layers on top of this:
+# see requirements-torch.txt.
+
 # Core dependencies
-numpy>=1.24.0
+# numpy cap: uv/pip may otherwise backtrack numba (torch profile) into
+# releases without Python 3.12 wheels. The cap must live HERE, not in
+# requirements-torch.txt - base is installed first and decides the numpy
+# version for both profiles.
+numpy>=1.24.0,<2.3
 PyYAML>=6.0
 httpx>=0.28.0
 openai>=1.0.0
@@ -10,40 +19,28 @@ pysbd>=0.3.4
 # Audio capture (Windows WASAPI loopback)
 PyAudioWPatch>=0.2.12
 
-# ASR engines
+# ASR engines that need no torch
+# faster-whisper runs on ctranslate2; no unconditional torch dependency.
+# CUDA execution of faster-whisper without torch additionally needs the
+# cublas/cudnn DLLs (the torch profile brings them along) - CPU works as-is.
 faster-whisper>=1.0.0
-funasr>=1.3.28
-omegaconf>=2.3.0
-kaldiio>=2.18.0
-torch-complex>=0.4.0
-soundfile>=0.12.1
-librosa>=0.10.0
-# Python 3.12 fix: without this floor the resolver backtracks to numba 0.53 /
-# llvmlite 0.36 (py<3.10 only) and the build explodes. numba>=0.59 has 3.12 wheels.
-numba>=0.59.0
-jaconv>=0.3.0
-jamo>=0.4.1
-hydra-core>=1.3.2
-six>=1.16.0
-sentencepiece>=0.2.0
-tiktoken>=0.7.0
-transformers>=4.40.0
-
 # SenseVoice ONNX backend (asr/sensevoice_onnx.py). Bundles its own ONNX
 # Runtime, so this needs no torch and no CUDA: ~28MB installed, and the ASR
 # worker starts in ~2.5s instead of ~56s.
 sherpa-onnx>=1.13.0
 
-# VAD (bundles the Silero v5 model in the wheel — no GitHub/torch.hub download)
-silero-vad>=5.0
+# VAD: the vendored Silero ONNX model (sublume/assets/) over onnxruntime.
+# faster-whisper pulls onnxruntime transitively, but the VAD depends on it
+# directly, so it is declared directly.
+onnxruntime>=1.16
 
-# Model hub (this fork downloads exclusively from HuggingFace)
+# Model hub (this project downloads exclusively from HuggingFace)
 huggingface_hub>=0.20.0
 
 # UI
 PyQt6>=6.5.0
 
-# torch & torchaudio - install separately with CUDA support:
-#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126
-#   Blackwell GPUs (RTX 50xx, sm_120) require cu128:
-#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
+# torch profile (funasr / anime-whisper engines, silero-vad jit) is opt-in:
+#   1) pip install torch torchaudio --index-url https://download.pytorch.org/whl/<cpu|cu126|cu128>
+#   2) pip install -r requirements-torch.txt
+# install.bat handles both automatically when the CUDA profile is chosen.

@@ -57,20 +57,44 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b %errorlevel%
 )
 
-:: Update dependencies — uv when available (same tool install.bat uses), pip otherwise
+:: Update dependencies — uv when available (same tool install.bat uses), pip otherwise.
+:: The torch profile is detected from the venv itself: torch present means the
+:: funasr stack (requirements-torch.txt) must be kept up to date too.
 echo.
 echo Updating dependencies...
+del ".venv\.sublume-ready" >nul 2>&1
+set "TORCH_PROFILE="
+.venv\Scripts\python.exe -c "import torch" >nul 2>&1
+if not errorlevel 1 set "TORCH_PROFILE=1"
+
 where uv >nul 2>&1
 if errorlevel 1 (
     .venv\Scripts\python.exe -m pip install -r requirements.txt --quiet
+    if errorlevel 1 goto depsfail
+    if defined TORCH_PROFILE (
+        .venv\Scripts\python.exe -m pip install -r requirements-torch.txt --quiet
+        if errorlevel 1 goto depsfail
+    )
 ) else (
     uv pip install --python .venv\Scripts\python.exe -r requirements.txt --quiet
+    if errorlevel 1 goto depsfail
+    if defined TORCH_PROFILE (
+        uv pip install --python .venv\Scripts\python.exe -r requirements-torch.txt --quiet
+        if errorlevel 1 goto depsfail
+    )
 )
-if errorlevel 1 (
-    echo [ERROR] Failed to update dependencies.
-    pause
-    exit /b 1
-)
+
+:: Stamp the environment as complete so start.bat's interrupted-install guard
+:: passes (also heals installs from before the marker existed).
+echo ok> ".venv\.sublume-ready"
+goto depsdone
+
+:depsfail
+echo [ERROR] Failed to update dependencies.
+pause
+exit /b 1
+
+:depsdone
 
 echo.
 echo ========================================
