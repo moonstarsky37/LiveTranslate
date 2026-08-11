@@ -2,7 +2,7 @@
 
 繁體中文｜[English](README_en.md)
 
-**Sublume** 是 Windows 上的**即時翻譯字幕**工具（macOS 版開發中）：看直播、看影片時，直接擷取電腦正在播放的聲音，在本機完成語音辨識，再交由翻譯模型（OpenAI 相容的本地 LLM 或 API 皆可）翻譯，字幕以透明浮窗疊在畫面最上層。**直播翻譯**不需要動播放器或網站的任何設定——只要電腦放得出聲音，Sublume 就能提取出來，替它上字幕。
+**Sublume** 是 **Windows 與 macOS** 上的**即時翻譯字幕**工具：看直播、看影片時，直接擷取電腦正在播放的聲音，在本機完成語音辨識，再交由翻譯模型（OpenAI 相容的本地 LLM 或 API 皆可）翻譯，字幕以透明浮窗疊在畫面最上層。**直播翻譯**不需要動播放器或網站的任何設定——只要電腦放得出聲音，Sublume 就能提取出來，替它上字幕。
 
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Windows](https://img.shields.io/badge/Platform-Windows-0078d4)
@@ -59,7 +59,8 @@ ASR 引擎、VAD 切分、翻譯模型、字幕樣式、效能測試、模型快
 
 ## 系統需求
 
-- Windows 10 / 11（macOS 版開發中，目前尚不可用）
+- Windows 10 / 11
+- macOS：Apple Silicon（M1 以上）、macOS 14（Sonoma）以上，實測於 macOS 15.5；目前為輕量安裝（不含 FunASR / Anime-Whisper 引擎），擷取系統聲音需安裝 BlackHole（見安裝說明）
 - 不需預先安裝 Python：`install.bat` 會自動取得專用的 Python 3.12（暫不支援 3.13）
 - **顯示卡非必需**：預設的「輕量」安裝純 CPU 即可即時辨識，整套約 1GB
 - 要用 FunASR / Anime-Whisper 引擎才需要「完整」安裝：NVIDIA 顯示卡與 CUDA 12.6（RTX 50 系列需 CUDA 12.8），約 5GB
@@ -110,6 +111,22 @@ pip install -r requirements-torch.txt
 ```
 
 </details>
+
+### macOS（原始碼安裝）
+
+```bash
+git clone https://github.com/moonstarsky37/Sublume.git
+cd Sublume
+./install.sh
+```
+
+安裝腳本會自動取得所需的一切（含專用的 Python 3.12）。完成後以 `./start.sh` 啟動，日後以 `./update.sh` 更新。
+
+擷取系統聲音需要 BlackHole 虛擬裝置（一次性設定）：
+
+1. `brew install blackhole-2ch`，裝完**重新開機**（重開機後 BlackHole 才會出現在裝置列表）
+2. 用「音訊 MIDI 設定」建立「多重輸出裝置」（內建喇叭 + BlackHole 2ch），並在 系統設定 → 聲音 設為輸出
+3. 首次開始擷取時，macOS 會詢問麥克風權限（對象是你的 Terminal）— 請允許；誤按拒絕的話，到 系統設定 → 隱私權與安全性 → 麥克風 勾回來，重開 Terminal 再啟動
 
 ## 首次啟動
 
