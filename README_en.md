@@ -2,7 +2,7 @@
 
 [繁體中文](README.md)｜English
 
-**Sublume** puts **real-time translated subtitles** on Windows (a macOS version is in progress): while you watch live streams or videos, it captures the audio your PC is playing, runs speech recognition locally, hands the text to a translation model (any OpenAI-compatible local LLM or API), and lays the subtitles over the screen in a transparent overlay. A **live stream translator** that lets you watch streams with subtitles without touching any player or website settings — if your computer can play the sound, Sublume can pull it out and subtitle it.
+**Sublume** puts **real-time translated subtitles** on **Windows and macOS**: while you watch live streams or videos, it captures the audio your PC is playing, runs speech recognition locally, hands the text to a translation model (any OpenAI-compatible local LLM or API), and lays the subtitles over the screen in a transparent overlay. A **live stream translator** that lets you watch streams with subtitles without touching any player or website settings — if your computer can play the sound, Sublume can pull it out and subtitle it.
 
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Windows](https://img.shields.io/badge/Platform-Windows-0078d4)
@@ -59,7 +59,8 @@ Audio is captured in 32ms chunks; Silero VAD segments complete utterances and fe
 
 ## Requirements
 
-- Windows 10 / 11 (a macOS version is in progress and not yet usable)
+- Windows 10 / 11
+- macOS: Apple Silicon (M1 or later), macOS 14 (Sonoma) or newer, tested on macOS 15.5; currently the Lightweight install only (no FunASR / Anime-Whisper engines), and capturing system audio needs the BlackHole virtual device (see Install)
 - No preinstalled Python needed: `install.bat` fetches its own Python 3.12 (3.13 is not supported yet)
 - **No GPU required**: the default Lightweight install transcribes in real time on a CPU, and the whole install is about 1GB
 - The Full install is only needed for the FunASR / Anime-Whisper engines: an NVIDIA GPU with CUDA 12.6 (RTX 50 series needs CUDA 12.8), about 5GB
@@ -110,6 +111,22 @@ pip install -r requirements-torch.txt
 ```
 
 </details>
+
+### macOS (from source)
+
+```bash
+git clone https://github.com/moonstarsky37/Sublume.git
+cd Sublume
+./install.sh
+```
+
+The installer fetches everything it needs (including its own Python 3.12). Launch with `./start.sh`; update later with `./update.sh`.
+
+Capturing system audio needs the BlackHole virtual device (one-time setup):
+
+1. `brew install blackhole-2ch`, then **restart your Mac** (BlackHole only appears in device lists after a reboot)
+2. Create a Multi-Output Device (built-in speakers + BlackHole 2ch) in Audio MIDI Setup and set it as the system output in System Settings > Sound
+3. The first capture triggers the macOS microphone permission prompt (the prompt names your terminal app) — allow it; if declined by mistake, re-enable it under System Settings > Privacy & Security > Microphone, then reopen your terminal and relaunch
 
 ## First launch
 
