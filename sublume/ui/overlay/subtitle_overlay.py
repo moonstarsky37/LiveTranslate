@@ -26,7 +26,7 @@ from sublume.ui.overlay.chat import ChatMessage
 from sublume.ui.overlay.handle import DragHandle
 from sublume.ui.overlay.monitor import MonitorBar
 from sublume.ui.overlay.theming import DEFAULT_STYLE, _hex_to_rgba
-from sublume.ui.overlay.win32 import set_click_through
+from sublume.ui.overlay.click_through import set_click_through
 
 # Re-exported for backward compatibility (style tab imports these here).
 from sublume.ui.overlay.theming import STYLE_PRESETS  # noqa: F401

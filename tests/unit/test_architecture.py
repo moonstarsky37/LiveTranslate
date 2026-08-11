@@ -25,6 +25,8 @@ QT_TORCH_FREE_MODULES = (
     "sublume.config.store",
     "sublume.paths",
     "sublume.asr.mem_policy",
+    "sublume.ui.overlay.click_through",
+    "sublume.ui.overlay.macos",
 )
 
 _BLOCKER = """

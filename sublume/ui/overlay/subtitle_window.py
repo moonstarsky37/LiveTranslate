@@ -24,7 +24,7 @@ from PyQt6.QtGui import QPainter, QPixmap
 from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget
 from sublume.ui.overlay.subtitle_text import _SubtitleTextWidget, _resolve_image_path
 from sublume.ui.overlay.theming import _hex_to_rgba
-from sublume.ui.overlay.win32 import set_click_through
+from sublume.ui.overlay.click_through import set_click_through
 
 
 DEFAULT_SUBTITLE_WIN_SETTINGS = {
