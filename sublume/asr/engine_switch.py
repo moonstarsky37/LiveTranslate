@@ -128,6 +128,40 @@ class EngineSwitchMixin:
             client.shutdown()
             raise
 
+    def _resolve_ready_device_label(self, client, state: dict):
+        """Replace the requested device label with what the worker actually loaded on.
+
+        remote-whisper is an in-process shim with no ready_info at all (its label
+        is the server URL), so the lookup stays defensive on both sides."""
+        info = getattr(client, "ready_info", None)
+        actual = (info or {}).get("device")
+        if actual and state.get("device_label") != actual:
+            log.info(
+                f"ASR device label resolved: {state.get('device_label')} -> {actual}"
+            )
+            state["device_label"] = actual
+
+    def _activate_asr(self, client, state: dict):
+        """Publish a loaded worker as the active one. Resolving the label first is
+        structural: _asr_restart_state below snapshots the state, so a later fix
+        would not reach the copy an auto-restart or recycle reuses."""
+        self._resolve_ready_device_label(client, state)
+        with self._asr_lock:
+            self._asr = client
+            self._app._asr_type = state["type"]
+            self._asr_signature = state["signature"]
+            self._asr_device = state["device"]
+            self._asr_config = dict(state["config"]) if state["config"] else None
+            self._funasr_model_key = state["funasr_model_key"]
+            self._whisper_model_size = state["whisper_model_size"]
+            self._app._asr_ready = True
+            self._asr_error_count = 0
+            self._asr_restart_state = dict(state)
+            self._asr_restart_count = 0
+            self._asr_worker_baseline_mb = None
+            self._mem_warned = False
+            self._asr_generation += 1
+
     def _switch_asr_engine(self, engine_type: str):
         settings = self._app._panel.get_settings() if self._app._panel else {}
         engine_type, funasr_model = normalize_asr_engine_selection(
@@ -359,34 +393,20 @@ class EngineSwitchMixin:
         dlg.exec()
         poll_timer.stop()
 
-        def _activate_asr(client, state):
-            with self._asr_lock:
-                self._asr = client
-                self._app._asr_type = state["type"]
-                self._asr_signature = state["signature"]
-                self._asr_device = state["device"]
-                self._asr_config = dict(state["config"]) if state["config"] else None
-                self._funasr_model_key = state["funasr_model_key"]
-                self._whisper_model_size = state["whisper_model_size"]
-                self._app._asr_ready = True
-                self._asr_error_count = 0
-                self._asr_restart_state = dict(state)
-                self._asr_restart_count = 0
-                self._asr_worker_baseline_mb = None
-                self._asr_generation += 1
-
         if new_asr[0] is not None:
-            _activate_asr(new_asr[0], target_state)
+            self._activate_asr(new_asr[0], target_state)
             if self._app._overlay:
                 self._app._overlay.update_asr_device(
                     f"{display_name} [{target_state['device_label']}]"
                 )
             self._set_asr_status("")
-            log.info(f"ASR worker ready: {engine_type} on {device}")
+            log.info(
+                f"ASR worker ready: {engine_type} on {target_state['device_label']}"
+            )
             return
 
         if restored_asr[0] is not None:
-            _activate_asr(restored_asr[0], old_state)
+            self._activate_asr(restored_asr[0], old_state)
             restored_name = old_state.get("display_name") or old_state.get("type")
             if self._app._overlay:
                 self._app._overlay.update_asr_device(
@@ -404,8 +424,8 @@ class EngineSwitchMixin:
                 ),
             )
             log.info(
-                f"Previous ASR worker restored: "
-                f"{old_state.get('type')} on {old_state.get('device')}"
+                f"Previous ASR worker restored: {old_state.get('type')} on "
+                f"{old_state.get('device_label', old_state.get('device'))}"
             )
             return
 

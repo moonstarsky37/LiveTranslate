@@ -41,6 +41,11 @@ class FunASREngine:
             f"({self.model_key}, family={self.family})"
         )
 
+    @property
+    def device(self):
+        """Forward the inner engine's actual device (None if it exposes none)."""
+        return getattr(self._engine, "device", None)
+
     def set_language(self, language: str):
         if hasattr(self._engine, "set_language"):
             self._engine.set_language(language)

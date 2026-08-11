@@ -59,7 +59,7 @@ jobs:
       - name: Silero ONNX tests
         # importorskip-guarded elsewhere; in this venv onnxruntime and PyQt6
         # exist, so the wrapper-contract and guard-dialog tests actually run.
-        run: .venv/Scripts/python.exe -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py -q -m "not local"
+        run: .venv/Scripts/python.exe -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py tests/unit/test_mem_threshold_check.py -q -m "not local"
 
   torch-free-mac:
     # The macOS Lightweight profile must stay installable and importable:
@@ -108,4 +108,4 @@ jobs:
         run: .venv/bin/python -c "from sublume.core.audio_capture import AudioCapture, list_output_devices; import sublume.core.capture.macos as mac; assert AudioCapture is mac.AudioCapture, 'dispatch picked the wrong backend'; print('sources on this runner:', list_output_devices()); print('has_blackhole:', mac.has_blackhole())"
 
       - name: Unit tests (onnx + capture + guard)
-        run: .venv/bin/python -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py -q -m "not local"
+        run: .venv/bin/python -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py tests/unit/test_mem_threshold_check.py -q -m "not local"

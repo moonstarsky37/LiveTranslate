@@ -54,6 +54,10 @@ class ASRClient:
         self._process: mp.Process | None = None
         self._lock = threading.RLock()
         self._status = "created"
+        # Ready payload from the worker (engine_type/display_name/device); the
+        # device there is what the engine actually loaded on, which the UI label
+        # resolver reads back. None until the worker reports ready.
+        self.ready_info = None
 
     @property
     def status(self) -> str:
@@ -100,6 +104,7 @@ class ASRClient:
                     f"Unexpected ASR worker startup response: {response.get('type')}"
                 )
             self._status = "ready"
+            self.ready_info = response.get("payload")
             log.info(
                 f"ASR worker ready: pid={self.pid}, "
                 f"{response.get('payload') or {}}"

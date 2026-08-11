@@ -30,6 +30,9 @@ class ASREngine:
         pad_seconds=None,
     ):
         self.language = language if language != "auto" else None
+        # ctranslate2 has no CUDA fallback (it raises instead), so the device
+        # composed here IS the device the model runs on.
+        self._device = f"cuda:{device_index}" if str(device).startswith("cuda") else str(device)
         self._model = WhisperModel(
             model_size,
             device=device,
@@ -40,6 +43,10 @@ class ASREngine:
         self._set_input_padding(pad_seconds, log_change=False)
         log.info(f"Model loaded: {model_size} on {device} ({compute_type})")
         self._log_input_padding()
+
+    @property
+    def device(self):
+        return self._device
 
     @staticmethod
     def _read_pad_seconds(value=None) -> float:

@@ -58,6 +58,14 @@ class SenseVoiceEngine:
         )
         self._log_input_padding()
 
+    @property
+    def device(self):
+        """The device FunASR actually loaded on: AutoModel rewrites kwargs when a
+        CUDA request falls back to CPU, so read it back live. None once unloaded."""
+        if self._model is None:
+            return None
+        return self._model.kwargs.get("device")
+
     @staticmethod
     def _read_pad_seconds(value=None) -> float:
         if value is None:
