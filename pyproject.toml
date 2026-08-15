@@ -69,6 +69,10 @@ module = [
     "sublume.core.capture",
     "sublume.core.capture.base",
     "sublume.core.capture.macos",
+    # overlay click-through: the platform shim and the new macOS backend
+    # (win32.py is legacy and stays under the sublume.ui.* baseline).
+    "sublume.ui.overlay.click_through",
+    "sublume.ui.overlay.macos",
 ]
 ignore_errors = false
 

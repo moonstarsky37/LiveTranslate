@@ -59,7 +59,7 @@ jobs:
       - name: Silero ONNX tests
         # importorskip-guarded elsewhere; in this venv onnxruntime and PyQt6
         # exist, so the wrapper-contract and guard-dialog tests actually run.
-        run: .venv/Scripts/python.exe -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py tests/unit/test_mem_threshold_check.py -q -m "not local"
+        run: .venv/Scripts/python.exe -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py tests/unit/test_click_through_dispatch.py tests/unit/test_overlay_tool_window.py tests/unit/test_mem_threshold_check.py -q -m "not local"
 
   torch-free-mac:
     # The macOS Lightweight profile must stay installable and importable:
@@ -98,7 +98,7 @@ jobs:
       - name: Assert torch is absent and the mac capture trio is present
         run: |
           .venv/bin/python -c "import importlib.util, sys; sys.exit(1 if importlib.util.find_spec('torch') else 0)"
-          .venv/bin/python -c "import sounddevice, objc"
+          .venv/bin/python -c "import sounddevice, objc, AppKit"
           .venv/bin/python -c "import importlib.util, sys; sys.exit(1 if importlib.util.find_spec('pyaudiowpatch') else 0)"
 
       - name: Import smoke + ONNX VAD path
@@ -107,5 +107,22 @@ jobs:
       - name: Capture dispatch resolves to the mac backend, device query is crash-safe
         run: .venv/bin/python -c "from sublume.core.audio_capture import AudioCapture, list_output_devices; import sublume.core.capture.macos as mac; assert AudioCapture is mac.AudioCapture, 'dispatch picked the wrong backend'; print('sources on this runner:', list_output_devices()); print('has_blackhole:', mac.has_blackhole())"
 
-      - name: Unit tests (onnx + capture + guard)
-        run: .venv/bin/python -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py tests/unit/test_mem_threshold_check.py -q -m "not local"
+      - name: Click-through dispatch resolves to the mac backend
+        # The only guard on macos.py's import line: Windows mypy/pytest narrow
+        # sys.platform and never see it.
+        run: .venv/bin/python -c "from sublume.ui.overlay import click_through; import sublume.ui.overlay.macos as macos; assert click_through.set_click_through is macos.set_click_through, 'dispatch picked the wrong backend'; print('click-through backend is macos')"
+
+      - name: pyobjc pointer roundtrip (objc_object(c_void_p=...) contract)
+        # Wraps an address that has NO live Python proxy - the object is kept
+        # alive only by an ObjC container, its proxy dropped and collected
+        # first. That is the backend's real case (winId() is a C++-created
+        # NSView pyobjc has never seen); wrapping a freshly proxied object
+        # would only prove the proxy cache works. Wrap BEFORE touching the
+        # holder, which would re-proxy the object.
+        run: .venv/bin/python -c "from Foundation import NSObject, NSMutableArray; import objc, ctypes, gc; holder = NSMutableArray.alloc().init(); o = NSObject.alloc().init(); holder.addObject_(o); addr = objc.pyobjc_id(o); del o; gc.collect(); o2 = objc.objc_object(c_void_p=ctypes.c_void_p(addr)); assert objc.pyobjc_id(o2) == addr, 'pointer roundtrip lost identity'; print('roundtrip ok:', o2.description())"
+
+      - name: Unit tests (onnx + capture + click-through + tool window + guard)
+        # test_overlay_tool_window really exercises the darwin branch here:
+        # sys.platform is darwin natively, so the WA_MacAlwaysShowToolWindow
+        # assertion is not just a monkeypatched simulation.
+        run: .venv/bin/python -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py tests/unit/test_click_through_dispatch.py tests/unit/test_overlay_tool_window.py tests/unit/test_mem_threshold_check.py -q -m "not local"

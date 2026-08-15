@@ -1,5 +1,7 @@
 """SubtitleOverlay: chat-style overlay window for live transcription."""
 
+import sys
+
 from PyQt6.QtCore import (
     QEasingCurve,
     QPoint,
@@ -26,7 +28,7 @@ from sublume.ui.overlay.chat import ChatMessage
 from sublume.ui.overlay.handle import DragHandle
 from sublume.ui.overlay.monitor import MonitorBar
 from sublume.ui.overlay.theming import DEFAULT_STYLE, _hex_to_rgba
-from sublume.ui.overlay.win32 import set_click_through
+from sublume.ui.overlay.click_through import set_click_through
 
 # Re-exported for backward compatibility (style tab imports these here).
 from sublume.ui.overlay.theming import STYLE_PRESETS  # noqa: F401
@@ -90,6 +92,13 @@ class SubtitleOverlay(QWidget):
         self.setWindowTitle("Sublume")
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        if sys.platform == "darwin":
+            # Qt::Tool is an NSPanel on macOS, and AppKit hides those whenever
+            # the owning application goes inactive. Click-through activates
+            # whatever is underneath on every click, so without this opt-out the
+            # overlay vanishes the first time the user clicks through it and
+            # only comes back via the Dock icon.
+            self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow)
 
         screen = QApplication.primaryScreen()
         geo = screen.availableGeometry()
