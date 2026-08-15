@@ -59,7 +59,7 @@ jobs:
       - name: Silero ONNX tests
         # importorskip-guarded elsewhere; in this venv onnxruntime and PyQt6
         # exist, so the wrapper-contract and guard-dialog tests actually run.
-        run: .venv/Scripts/python.exe -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py tests/unit/test_click_through_dispatch.py tests/unit/test_mem_threshold_check.py -q -m "not local"
+        run: .venv/Scripts/python.exe -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py tests/unit/test_click_through_dispatch.py tests/unit/test_overlay_tool_window.py tests/unit/test_mem_threshold_check.py -q -m "not local"
 
   torch-free-mac:
     # The macOS Lightweight profile must stay installable and importable:
@@ -121,5 +121,8 @@ jobs:
         # holder, which would re-proxy the object.
         run: .venv/bin/python -c "from Foundation import NSObject, NSMutableArray; import objc, ctypes, gc; holder = NSMutableArray.alloc().init(); o = NSObject.alloc().init(); holder.addObject_(o); addr = objc.pyobjc_id(o); del o; gc.collect(); o2 = objc.objc_object(c_void_p=ctypes.c_void_p(addr)); assert objc.pyobjc_id(o2) == addr, 'pointer roundtrip lost identity'; print('roundtrip ok:', o2.description())"
 
-      - name: Unit tests (onnx + capture + click-through + guard)
-        run: .venv/bin/python -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py tests/unit/test_click_through_dispatch.py tests/unit/test_mem_threshold_check.py -q -m "not local"
+      - name: Unit tests (onnx + capture + click-through + tool window + guard)
+        # test_overlay_tool_window really exercises the darwin branch here:
+        # sys.platform is darwin natively, so the WA_MacAlwaysShowToolWindow
+        # assertion is not just a monkeypatched simulation.
+        run: .venv/bin/python -m pytest tests/unit/test_silero_onnx.py tests/unit/test_model_manager.py tests/unit/test_engine_switch_guard.py tests/unit/test_capture_backends.py tests/unit/test_click_through_dispatch.py tests/unit/test_overlay_tool_window.py tests/unit/test_mem_threshold_check.py -q -m "not local"

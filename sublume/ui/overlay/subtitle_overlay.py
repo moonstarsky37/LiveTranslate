@@ -1,5 +1,7 @@
 """SubtitleOverlay: chat-style overlay window for live transcription."""
 
+import sys
+
 from PyQt6.QtCore import (
     QEasingCurve,
     QPoint,
@@ -90,6 +92,13 @@ class SubtitleOverlay(QWidget):
         self.setWindowTitle("Sublume")
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        if sys.platform == "darwin":
+            # Qt::Tool is an NSPanel on macOS, and AppKit hides those whenever
+            # the owning application goes inactive. Click-through activates
+            # whatever is underneath on every click, so without this opt-out the
+            # overlay vanishes the first time the user clicks through it and
+            # only comes back via the Dock icon.
+            self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow)
 
         screen = QApplication.primaryScreen()
         geo = screen.availableGeometry()
